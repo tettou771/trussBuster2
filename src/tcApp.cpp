@@ -15,10 +15,13 @@ void tcApp::setup() {
 
     jukebox().setup();
 
+    worldScore().fetch();   // load the global high score (HI WORLD)
+
     scene_ = make_shared<GameScene>();
     addChild(scene_);
 
     mobile_ = isMobileDevice();
+    scene_->setMobile(mobile_);
     hud_ = make_shared<Hud>(scene_.get());
     hud_->setMobile(mobile_);
     addChild(hud_);
@@ -34,9 +37,8 @@ void tcApp::setup() {
                           random(1.0f, 2.6f), random(0.0f, TAU)});
     }
 
-    // NodeInspector is a singleton; this app drives its own imgui frame (debug
-    // panel), so we call instance().draw() in draw() rather than attach().
-    NodeInspector::instance().setEnabled(false);   // dev tool, opt-in via F1
+    // NodeInspector disabled.
+    // NodeInspector::instance().setEnabled(false);   // dev tool, opt-in via F1
 
     registerMcpTools();
 }
@@ -63,13 +65,13 @@ void tcApp::draw() {
     drawCircle(W * 0.82f - 16, H * 0.15f - 8, 32);
 
     imguiBegin();
-    NodeInspector::instance().draw(*this);
+    // NodeInspector::instance().draw(*this);   // node inspector disabled
     if (debugPanel_) drawDebugPanel();
     imguiEnd();
 }
 
 void tcApp::keyPressed(int key) {
-    if (key == KEY_F1) { NodeInspector::instance().toggle(); return; }
+    // if (key == KEY_F1) { NodeInspector::instance().toggle(); return; }  // disabled
     if (key == KEY_F2) { debugPanel_ = !debugPanel_; return; }
     scene_->handleKey(key, true);
 }

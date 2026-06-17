@@ -1,0 +1,7 @@
+name = "trussbuster-score"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+[[kv_namespaces]]
+binding = "SCORES"
+id = "7e3356474d6849b9a4ca9c5a663e5346"

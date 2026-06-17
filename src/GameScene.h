@@ -9,6 +9,7 @@
 #include "Cannonball.h"
 #include "Cannon.h"
 #include "ExplosionFx.h"
+#include "WorldScore.h"
 
 using namespace std;
 using namespace tc;
@@ -207,14 +208,36 @@ public:
         spawnBall(Vec3(0, 1.3f, PLATFORM_CZ), Vec3(0, 0, 0), true);
     }
 
+    void setMobile(bool m) { mobile_ = m; }
+
+    // --- world high score (HI WORLD) -----------------------------------------
+    bool isEnteringInitials() const {
+        return phase_ == Phase::GameOver && newRecord_ && !submitted_;
+    }
+    const string& getInitialsEntry() const { return initialsEntry_; }
+
+    void submitInitials() {
+        if (submitted_) return;
+        worldScore().submit(score_, initialsEntry_);   // server clamps + keeps max
+        submitted_ = true;
+    }
+
     // Click / tap advances the non-gameplay screens (and satisfies the browser
-    // autoplay gate so audio starts here on web). No-op during play.
+    // autoplay gate so audio starts here on web). No-op during play / entry.
     void confirm() {
         if (phase_ == Phase::Title)         startGame();
-        else if (phase_ == Phase::GameOver) toTitle();
+        else if (phase_ == Phase::GameOver && !isEnteringInitials()) toTitle();
     }
 
     void handleKey(int key, bool down) {
+        // typing initials for a new world record
+        if (down && isEnteringInitials()) {
+            if (((key >= 'A' && key <= 'Z') || (key >= '0' && key <= '9'))
+                && initialsEntry_.size() < 3)        initialsEntry_ += (char)key;
+            else if (key == KEY_BACKSPACE && !initialsEntry_.empty()) initialsEntry_.pop_back();
+            else if (key == KEY_ENTER)               submitInitials();
+            return;
+        }
         if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN) {
             held_[key] = down;
             return;
@@ -289,6 +312,9 @@ public:
         // animate the shared gold-glint texture once per frame (a Texture can
         // only be uploaded once per frame; never let a Block do this)
         goldGlint().update(getElapsedTimef());
+
+        // pick up any async world-score result (web)
+        worldScore().poll();
 
         if (editMode_) return;   // stage editing: physics paused
 
@@ -500,12 +526,14 @@ private:
     void spawnWave(bool initial) {
         waveCount_++;
 
-        // palette for ordinary scoring blocks
+        // palette for ordinary scoring blocks — no yellow/sand tones (they read
+        // as gold and confuse the player)
         static const Color palette[] = {
-            Color(0.45f, 0.85f, 0.70f), Color(0.95f, 0.55f, 0.45f),
-            Color(0.55f, 0.78f, 0.95f), Color(0.92f, 0.78f, 0.50f),
-            Color(0.55f, 0.35f, 0.75f), Color(0.45f, 0.85f, 0.55f),
+            Color(0.45f, 0.85f, 0.70f), Color(0.95f, 0.45f, 0.40f),
+            Color(0.55f, 0.78f, 0.95f), Color(0.55f, 0.35f, 0.75f),
+            Color(0.45f, 0.85f, 0.55f), Color(0.95f, 0.45f, 0.78f),
         };
+        const int paletteN = (int)(sizeof(palette) / sizeof(palette[0]));
 
         // difficulty ramp: 0 at wave 1, saturating toward 1
         float ramp = clamp((waveCount_ - 1) * 0.10f, 0.0f, 1.0f);
@@ -515,13 +543,13 @@ private:
         int total = initial ? 4
                             : 4 + (int)(ramp * 4.0f) + (int)random(0.0f, 2.99f);
 
-        // gold count averages total/5 so the gold proportion stays ~constant as
-        // the wave grows; below 6 keep the single-gold guarantee
-        int golds;
-        if (total >= 6)
-            golds = total / 5 + (random(0.0f, 5.0f) < (float)(total % 5) ? 1 : 0);
-        else
-            golds = 1;
+        // gold gets scarcer as the waves climb: 1 per 5 blocks (<=wave 10),
+        // 1 per 7 (11-20), 1 per 10 (21-30), 1 per 12 (31+). golds averages
+        // total/divisor (the remainder gives a fractional extra).
+        int gd = (waveCount_ <= 10) ? 5 : (waveCount_ <= 20) ? 7
+               : (waveCount_ <= 30) ? 10 : 12;
+        int golds = total / gd + (random(0.0f, (float)gd) < (float)(total % gd) ? 1 : 0);
+        if (waveCount_ <= 10) golds = std::max(1, golds);   // early: recharge stays viable
         int normals = std::max(0, total - golds);
 
         // junk also climbs with the ramp
@@ -555,7 +583,7 @@ private:
             float sz = random(0.48f, 0.6f);
             d.size = Vec3(sz, sz, sz);
             d.points = 100;
-            d.color = palette[(int)random(0.0f, 5.999f)];
+            d.color = palette[(int)random(0.0f, (float)paletteN - 0.001f)];
             float he = sz * 0.5f;
             Vec3 s = pickSlot(he, taken, takenHE);
             d.pos = Vec3(s.x, baseY + d.size.y * 0.5f, s.z);
@@ -649,7 +677,19 @@ private:
         hiScore_ = std::max(hiScore_, score_);
         jukebox().bgm.stop();
         jukebox().overJingle.play();
-        callAfter(5.0, [this]() {
+
+        // beat the world record? (only when we actually know it — web)
+        newRecord_ = worldScore().loaded && score_ > worldScore().score && score_ > 0;
+        submitted_ = false;
+        initialsEntry_.clear();
+        if (newRecord_ && mobile_) {        // no keyboard: record anonymously
+            initialsEntry_ = "YOU";
+            submitInitials();
+            newRecord_ = false;
+        }
+
+        // longer dwell when typing initials; otherwise the usual 5 s
+        callAfter(newRecord_ ? 15.0 : 5.0, [this]() {
             if (phase_ == Phase::GameOver) toTitle();
         });
     }
@@ -761,6 +801,11 @@ private:
     int   scoringLeft_ = 0;
     float settle_ = 0;
     bool  autopilot_ = false;
+
+    bool   mobile_ = false;
+    bool   newRecord_ = false;     // this game beat the world record
+    bool   submitted_ = false;     // already POSTed the record
+    string initialsEntry_;         // 3-char arcade initials being typed
 
     std::map<int, bool> held_;
 

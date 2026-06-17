@@ -78,8 +78,11 @@ private:
             centerShadow(mobile_ ? "TAP TO START" : "CLICK TO START",
                          H * 0.45f, 3.0f * uiScale(), Color(1.0f, 0.95f, 0.6f));
 
-        center("HI SCORE  " + pad(scene_->getHiScore()), H * 0.54f, 2.0f * uiScale(),
+        center("HI         " + pad(scene_->getHiScore()), H * 0.54f, 2.0f * uiScale(),
                Color(0.95f, 0.6f, 0.5f));
+        if (worldScore().loaded)
+            center("HI WORLD  " + pad(worldScore().score) + " " + worldScore().initials,
+                   H * 0.54f + 26 * uiScale(), 2.0f * uiScale(), Color(1.0f, 0.82f, 0.3f));
 
         setColor(0.4f, 0.42f, 0.5f);
         drawBitmapString("build " __DATE__ " " __TIME__, 24, getHeight() - 14, 1.0f);
@@ -164,16 +167,29 @@ private:
 
     void drawGameOver() {
         dim(0.55f);
-        float k = uiScale(), H = getHeight();
-        centerShadow("GAME OVER", H * 0.34f, 6.0f * k, Color(0.95f, 0.35f, 0.3f));
-        center("WAVE  " + to_string(scene_->getWave()),
-               H * 0.34f + 80 * k, 2.5f * k, Color(0.7f, 0.85f, 0.95f));
-        center("SCORE  " + pad(scene_->getScore()),
-               H * 0.34f + 118 * k, 3.0f * k, Color(0.95f, 0.95f, 1.0f));
-        center("HI     " + pad(scene_->getHiScore()),
-               H * 0.34f + 162 * k, 2.0f * k, Color(0.8f, 0.65f, 0.6f));
-        if (fmodf(getElapsedTimef(), 1.2f) < 0.75f)
+        float k = uiScale(), H = getHeight(), t = getElapsedTimef(), y = H * 0.26f;
+        centerShadow("GAME OVER", y, 6.0f * k, Color(0.95f, 0.35f, 0.3f));
+        center("WAVE  " + to_string(scene_->getWave()), y + 78 * k, 2.5f * k, Color(0.7f, 0.85f, 0.95f));
+        center("SCORE  " + pad(scene_->getScore()), y + 114 * k, 3.0f * k, Color(0.95f, 0.95f, 1.0f));
+        center("HI        " + pad(scene_->getHiScore()), y + 156 * k, 2.0f * k, Color(0.8f, 0.65f, 0.6f));
+        if (worldScore().loaded)
+            center("HI WORLD  " + pad(worldScore().score) + " " + worldScore().initials,
+                   y + 186 * k, 2.0f * k, Color(1.0f, 0.82f, 0.3f));
+
+        if (scene_->isEnteringInitials()) {
+            if (fmodf(t, 0.7f) < 0.45f)
+                center("NEW WORLD RECORD!", y + 232 * k, 2.5f * k, Color(1.0f, 0.9f, 0.3f));
+            string e = scene_->getInitialsEntry();
+            string slot;
+            for (int i = 0; i < 3; i++)
+                slot += (i < (int)e.size()) ? string(1, e[i])
+                      : (i == (int)e.size() && fmodf(t, 0.6f) < 0.3f) ? "_" : " ";
+            center("INITIALS [" + slot + "]", y + 270 * k, 2.5f * k, Color(1.0f, 1.0f, 1.0f));
+            if (!mobile_)
+                center("TYPE 3 LETTERS + ENTER", y + 304 * k, 1.5f * k, Color(0.7f, 0.7f, 0.75f));
+        } else if (fmodf(t, 1.2f) < 0.75f) {
             center(mobile_ ? "TAP TO CONTINUE" : "CLICK TO CONTINUE",
-                   H * 0.34f + 210 * k, 2.0f * k, Color(0.8f, 0.8f, 0.85f));
+                   y + 232 * k, 2.0f * k, Color(0.8f, 0.8f, 0.85f));
+        }
     }
 };

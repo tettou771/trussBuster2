@@ -2,7 +2,7 @@
 
 #include <TrussC.h>
 #include <tcxImGui.h>
-#include <tcxNodeInspector.h>
+// #include <tcxNodeInspector.h>   // node inspector disabled
 #include "GameScene.h"
 #include "Hud.h"
 #include "Mobile.h"
