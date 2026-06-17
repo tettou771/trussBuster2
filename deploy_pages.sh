@@ -23,6 +23,9 @@ import sys, os
 ver = os.environ['TB_VER']
 src = open('bin/trussBuster2.html').read()
 
+# Browser tab title (emscripten leaves the {{{ TITLE }}} placeholder unfilled).
+src = src.replace('{{{ TITLE }}}', 'TRUSS BUSTER')
+
 # Version the loader script and the wasm/data it fetches (locateFile).
 src = src.replace('src=trussBuster2.js', 'src=trussBuster2.js?v=' + ver, 1)
 src = src.replace('var Module={canvas:canvasElement,',
