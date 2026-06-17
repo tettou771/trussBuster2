@@ -507,14 +507,26 @@ private:
             Color(0.55f, 0.35f, 0.75f), Color(0.45f, 0.85f, 0.55f),
         };
 
-        int normals = initial ? 4 : (int)random(3.0f, 5.99f);
-        int golds   = 1;
-
         // difficulty ramp: 0 at wave 1, saturating toward 1
         float ramp = clamp((waveCount_ - 1) * 0.10f, 0.0f, 1.0f);
+
+        // total scoring blocks (the ones you must clear) grow with the wave:
+        // ~4 early -> ~8-10 late
+        int total = initial ? 4
+                            : 4 + (int)(ramp * 4.0f) + (int)random(0.0f, 2.99f);
+
+        // gold count averages total/5 so the gold proportion stays ~constant as
+        // the wave grows; below 6 keep the single-gold guarantee
+        int golds;
+        if (total >= 6)
+            golds = total / 5 + (random(0.0f, 5.0f) < (float)(total % 5) ? 1 : 0);
+        else
+            golds = 1;
+        int normals = std::max(0, total - golds);
+
+        // junk also climbs with the ramp
         int junks = 0;
         if (!initial) {
-            // expected junk grows ~0..3 with the ramp, plus a coin-flip bonus
             junks = (int)floorf(ramp * 2.6f);
             if (random(0.0f, 1.0f) < ramp) junks++;
             junks = std::min(junks, 4);
