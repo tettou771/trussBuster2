@@ -255,10 +255,13 @@ public:
         }
         if (key == KEY_SPACE && phase_ == Phase::Playing && !autopilot_) {
             if (down && !cannon_->isCharging()) {
-                if (shots_ > 0) cannon_->beginCharge();
+                if (shots_ > 0) { cannon_->beginCharge(); spaceDownTime_ = getElapsedTimef(); }
                 else            jukebox().dryFire.play();
             } else if (!down && cannon_->isCharging()) {
-                cannon_->releaseCharge();
+                // ignore a too-quick press/release (chatter / shaky double-tap):
+                // hold at least 200 ms to actually fire
+                if (getElapsedTimef() - spaceDownTime_ < 0.2f) cannon_->cancelCharge();
+                else                                           cannon_->releaseCharge();
             }
         }
     }
@@ -817,6 +820,7 @@ private:
     int   waveCount_ = 0;
     int   scoringLeft_ = 0;
     float settle_ = 0;
+    float spaceDownTime_ = 0;   // for the SPACE chatter debounce
     bool  autopilot_ = false;
 
     bool   mobile_ = false;
