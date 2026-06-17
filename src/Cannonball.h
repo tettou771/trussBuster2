@@ -54,16 +54,7 @@ public:
         // anything that has dropped off the deck disappears promptly
         if (gp.y < 0.5f) { destroy(); return; }
 
-        if (mine_) {
-            // rotation is frozen (set in arm) so it never rolls; lightly damp
-            // horizontal drift so it mostly stays where it settled but can still
-            // be shoved off the edge (then it falls and is removed above).
-            if (rb && rb->body().isValid()) {
-                Vec3 lv = rb->body().getLinearVelocity();
-                rb->body().setLinearVelocity(Vec3(lv.x * 0.85f, lv.y, lv.z * 0.85f));
-            }
-            return;
-        }
+        if (mine_) return;   // pinned in arm() via DOF locks; nothing to do
 
         // detect coming to rest on the platform -> arm as a mine
         bool onPlatform = platformDist(gp) < PLATFORM_RADIUS - 0.15f &&
@@ -130,12 +121,18 @@ private:
 
     void arm() {
         mine_ = true;
-        // freeze rotation so it never rolls (the collider stays the 12-sided
-        // hull; lockRotation just flips DOF flags in place — no body recreate)
+        // Lock the body's DOFs so a settled mine never rolls AND never gets
+        // dragged horizontally by the spinning deck (that drag, sampled once per
+        // frame, twitched the mine — worse at low frame rate). Only vertical
+        // translation stays free, so it can still drop if it loses support. This
+        // is framerate-independent and the collider (the 12-sided hull) is
+        // untouched. lockRotation/lockPos just flip DOF flags in place.
         if (auto* rb = getMod<RigidBody>()) {
             rb->freezeRotation();
+            rb->setLockPosX(true);
+            rb->setLockPosZ(true);
             if (rb->body().isValid())
-                rb->body().setAngularVelocity(Vec3(0, 0, 0));
+                rb->body().setLinearVelocity(Vec3(0, 0, 0));
         }
     }
 

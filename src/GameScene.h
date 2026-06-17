@@ -243,8 +243,8 @@ public:
         // fixed play camera; SHIFT+drag orbits (debug). Target sits between the
         // cannon (z=6.5) and the deck (z=-6) and the camera is pulled back so the
         // cannon stays on screen in the foreground.
-        cam_.setTarget(0.0f, 1.1f, 0.0f);
-        cam_.setDistance(20.5f);
+        cam_.setTarget(0.0f, 1.3f, -1.4f);
+        cam_.setDistance(16.5f);
         cam_.setAzimuth(0.22f);
         cam_.setElevation(0.40f);
         cam_.enableMouseInput();
