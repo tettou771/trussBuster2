@@ -106,7 +106,7 @@ void tcApp::drawDebugPanel() {
     float yaw = c->getYawDeg();
     if (ImGui::SliderFloat("Yaw", &yaw, -61.0f, 61.0f)) c->setYawDeg(yaw);
     float pitch = c->getPitchDeg();
-    if (ImGui::SliderFloat("Pitch", &pitch, 0.0f, 64.0f)) c->setPitchDeg(pitch);
+    if (ImGui::SliderFloat("Pitch", &pitch, 0.0f, 45.0f)) c->setPitchDeg(pitch);
     ImGui::SliderFloat("Power", &dbgPower_, 0.0f, 1.0f);
     if (ImGui::Button("Fire")) scene_->requestFire(dbgPower_);
 
@@ -130,7 +130,7 @@ void tcApp::registerMcpTools() {
     mcp::tool("get_state", "Full game state (phase, level, score, shots, blocks, cannon)")
         .bind([this]() { return scene_->stateJson(); });
 
-    mcp::tool("set_aim", "Aim the cannon (yaw: -61..61 deg, + = left; pitch: 0..64 deg)")
+    mcp::tool("set_aim", "Aim the cannon (yaw: -61..61 deg, + = left; pitch: 0..45 deg)")
         .arg<float>("yaw", "yaw in degrees")
         .arg<float>("pitch", "pitch in degrees")
         .bind([this](const json& a) {

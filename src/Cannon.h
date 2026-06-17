@@ -27,7 +27,9 @@ public:
     float getYaw() const   { return yaw_; }
     float getPitch() const { return pitch_; }
     void  setYaw(float v)   { yaw_ = clamp(v, -TAU * 0.17f, TAU * 0.17f); }
-    void  setPitch(float v) { pitch_ = clamp(v, 0.0f, TAU * 0.18f); }
+    // pitch capped at 45deg: steeper lobs let you drop balls straight onto the
+    // deck to farm mines cheaply, which feels like an exploit
+    void  setPitch(float v) { pitch_ = clamp(v, 0.0f, deg2rad(45.0f)); }
 
     float getYawDeg() const    { return rad2deg(yaw_); }
     float getPitchDeg() const  { return rad2deg(pitch_); }

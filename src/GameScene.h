@@ -682,7 +682,7 @@ private:
                 float disc = v * v * v * v - g * (g * dist * dist + 2.0f * h * v * v);
                 if (disc < 0) { ok = false; break; }
                 pitch = atanf((v * v - sqrtf(disc)) / (g * dist));
-                ok = (pitch >= 0.0f && pitch <= TAU * 0.18f);
+                ok = (pitch >= 0.0f && pitch <= deg2rad(45.0f));
                 if (!ok) break;
                 Vec3 dir(-sinf(yawSol) * cosf(pitch), sinf(pitch), -cosf(yawSol) * cosf(pitch));
                 from = base + dir * Cannon::BARREL_LEN;
