@@ -48,7 +48,7 @@ it never ends, it just gets harder.
 | Click / tap | start (and continue after game over) |
 | ← → ↑ ↓ | aim |
 | hold SPACE → release | charge & fire (release in the white zone for a MAX shot) |
-| SHARE button | post your run (score + link) on game over |
+| POST ON X | tweet your run (score + link) on game over |
 
 On phones the controls switch to an on‑screen d‑pad + FIRE button automatically.
 
@@ -77,7 +77,7 @@ rejected; the salt is a Worker secret + a gitignored `src/Secret.h` (copy
 - **Audio** — every sound effect and the looping BGM are synthesized at runtime
   with TrussC's `ChipSound`. No asset files.
 - **Cross‑platform** — one codebase, native + browser. The leaderboard fetch/share
-  use the browser's `fetch`/`navigator.share` on web and no‑op natively.
+  use the browser's fetch on web and no-op natively.
 
 Made with [TrussC](https://github.com/TrussC-org/TrussC) · physics by
 [Jolt](https://github.com/jrouwe/JoltPhysics).

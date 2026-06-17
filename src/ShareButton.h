@@ -7,10 +7,10 @@
 using namespace std;
 using namespace tc;
 
-// A clickable SHARE button shown on the game-over screen. Posts the run (score +
-// game link) to the native share sheet on mobile / an X (Twitter) intent on
-// desktop. It's a RectNode so it owns its own click; tcApp gates the
-// screen-advance tap against its bounds so a share-click doesn't also leave.
+// A clickable "POST ON X" button shown on the game-over screen. Opens an X
+// (Twitter) post intent with the run (score + game link). It's a RectNode so it
+// owns its own click; tcApp gates the screen-advance tap against its bounds so a
+// share-click doesn't also leave the screen.
 class ShareButton : public RectNode {
 public:
     explicit ShareButton(GameScene* scene) : scene_(scene) {}
@@ -47,8 +47,8 @@ public:
         drawRect(0, 0, getWidth(), 2);                            // top highlight
         setColor(1.0f, 1.0f, 1.0f, 0.97f);
         setTextAlign(Direction::Center, Direction::Center);
-        drawBitmapString("SHARE", getWidth() * 0.5f, getHeight() * 0.5f,
-                         2.2f * (getWidth() / 190.0f));
+        drawBitmapString("POST ON X", getWidth() * 0.5f, getHeight() * 0.5f,
+                         1.9f * (getWidth() / 190.0f));
         setTextAlign(Direction::Left, Direction::Top);
     }
 

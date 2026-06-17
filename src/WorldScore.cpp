@@ -60,19 +60,14 @@ EM_JS(void, js_wsPrompt, (int s, const char* saltC), {
         .catch(function(e) {});
 });
 
-// Share the run: native share sheet on mobile, X (Twitter) post intent on
-// desktop. Called from a click/tap so the browser permits it.
+// Post the run to X (Twitter). Opened from a click/tap so the browser allows it.
 EM_JS(void, js_share, (int score, int wave), {
     var url = "https://tettou771.github.io/demo-trussBuster2/";
     var text = "I reached Wave " + wave + " with a score of " + score +
                " in TRUSS BUSTER ENDLESS! Can you beat it?";
-    if (navigator.share) {
-        navigator.share({ title: "TRUSS BUSTER ENDLESS", text: text, url: url }).catch(function(e) {});
-    } else {
-        var x = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) +
-                "&url=" + encodeURIComponent(url);
-        window.open(x, "_blank");
-    }
+    var x = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) +
+            "&url=" + encodeURIComponent(url);
+    window.open(x, "_blank");
 });
 
 EM_JS(int, js_wsScore, (), {
