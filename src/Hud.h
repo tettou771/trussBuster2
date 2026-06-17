@@ -63,6 +63,25 @@ private:
         drawRect(0, 0, getWidth(), getHeight());
     }
 
+    // world leaderboard: a centered "- WORLD TOP -" header + ranked rows
+    void drawBoard(float topY, int maxRows, float scale) {
+        center("- WORLD TOP -", topY, scale, Color(0.95f, 0.8f, 0.45f));
+        auto& b = worldScore().board;
+        if (b.empty()) {
+            center(worldScore().loaded ? "(no scores yet)" : "...",
+                   topY + 24 * scale, scale * 0.85f, Color(0.6f, 0.62f, 0.7f));
+            return;
+        }
+        float lh = 15.0f * scale;
+        int n = std::min((int)b.size(), maxRows);
+        for (int i = 0; i < n; i++) {
+            string rank = (i + 1 < 10 ? " " : "") + to_string(i + 1);
+            string line = rank + "  " + pad(b[i].score) + "  " + b[i].initials;
+            Color c = (i == 0) ? Color(1.0f, 0.85f, 0.35f) : Color(0.82f, 0.84f, 0.9f);
+            center(line, topY + 26 * scale + i * lh, scale * 0.85f, c);
+        }
+    }
+
     // --- screens -------------------------------------------------------------
     void drawTitle() {
         float t = getElapsedTimef();
@@ -78,11 +97,9 @@ private:
             centerShadow(mobile_ ? "TAP TO START" : "CLICK TO START",
                          H * 0.45f, 3.0f * uiScale(), Color(1.0f, 0.95f, 0.6f));
 
-        center("HI         " + pad(scene_->getHiScore()), H * 0.54f, 2.0f * uiScale(),
+        center("HI  " + pad(scene_->getHiScore()), H * 0.51f, 2.0f * uiScale(),
                Color(0.95f, 0.6f, 0.5f));
-        if (worldScore().loaded)
-            center("HI WORLD  " + pad(worldScore().score) + " " + worldScore().initials,
-                   H * 0.54f + 26 * uiScale(), 2.0f * uiScale(), Color(1.0f, 0.82f, 0.3f));
+        drawBoard(H * 0.575f, 8, 1.6f * uiScale());
 
         setColor(0.4f, 0.42f, 0.5f);
         drawBitmapString("build " __DATE__ " " __TIME__, 24, getHeight() - 14, 1.0f);
@@ -97,7 +114,7 @@ private:
             setColor(0.6f, 0.62f, 0.7f);
             drawBitmapString("ARROWS : AIM\nHOLD SPACE : CHARGE & FIRE\nGOLD RECHARGES - SURVIVE THE ENDLESS DECK!", 24, y, 1.5f);
             setColor(0.45f, 0.47f, 0.55f);
-            drawBitmapString("F1 : INSPECTOR\nF2 : DEBUG PANEL", getWidth() - 150, y, 1.5f);
+            drawBitmapString("F2 : DEBUG PANEL", getWidth() - 150, y, 1.5f);
         }
     }
 
@@ -166,33 +183,33 @@ private:
     }
 
     void drawGameOver() {
-        dim(0.55f);
-        float k = uiScale(), H = getHeight(), t = getElapsedTimef(), y = H * 0.26f;
-        centerShadow("GAME OVER", y, 6.0f * k, Color(0.95f, 0.35f, 0.3f));
-        center("WAVE  " + to_string(scene_->getWave()), y + 78 * k, 2.5f * k, Color(0.7f, 0.85f, 0.95f));
-        center("SCORE  " + pad(scene_->getScore()), y + 114 * k, 3.0f * k, Color(0.95f, 0.95f, 1.0f));
-        center("HI        " + pad(scene_->getHiScore()), y + 156 * k, 2.0f * k, Color(0.8f, 0.65f, 0.6f));
-        if (worldScore().loaded)
-            center("HI WORLD  " + pad(worldScore().score) + " " + worldScore().initials,
-                   y + 186 * k, 2.0f * k, Color(1.0f, 0.82f, 0.3f));
+        dim(0.6f);
+        float k = uiScale(), H = getHeight(), t = getElapsedTimef(), y = H * 0.16f;
+        centerShadow("GAME OVER", y, 5.5f * k, Color(0.95f, 0.35f, 0.3f));
+        center("WAVE " + to_string(scene_->getWave()) + "   SCORE " + pad(scene_->getScore()),
+               y + 70 * k, 2.2f * k, Color(0.95f, 0.95f, 1.0f));
+        center("YOUR HI  " + pad(scene_->getHiScore()), y + 100 * k, 1.8f * k, Color(0.8f, 0.65f, 0.6f));
+
+        drawBoard(y + 132 * k, 5, 1.4f * k);
+        float fy = y + 300 * k;
 
         if (scene_->isEnteringInitials()) {
             if (fmodf(t, 0.7f) < 0.45f)
-                center("NEW WORLD RECORD!", y + 232 * k, 2.5f * k, Color(1.0f, 0.9f, 0.3f));
+                center("NEW WORLD RECORD!", fy, 2.2f * k, Color(1.0f, 0.9f, 0.3f));
             if (mobile_) {
-                center("TAP TO ENTER INITIALS", y + 272 * k, 2.0f * k, Color(1.0f, 1.0f, 1.0f));
+                center("TAP TO ENTER INITIALS", fy + 34 * k, 2.0f * k, Color(1.0f, 1.0f, 1.0f));
             } else {
                 string e = scene_->getInitialsEntry();
                 string slot;
                 for (int i = 0; i < 3; i++)
                     slot += (i < (int)e.size()) ? string(1, e[i])
                           : (i == (int)e.size() && fmodf(t, 0.6f) < 0.3f) ? "_" : " ";
-                center("INITIALS [" + slot + "]", y + 270 * k, 2.5f * k, Color(1.0f, 1.0f, 1.0f));
-                center("TYPE 3 LETTERS + ENTER", y + 304 * k, 1.5f * k, Color(0.7f, 0.7f, 0.75f));
+                center("INITIALS [" + slot + "]", fy + 32 * k, 2.2f * k, Color(1.0f, 1.0f, 1.0f));
+                center("TYPE 3 LETTERS + ENTER", fy + 62 * k, 1.4f * k, Color(0.7f, 0.7f, 0.75f));
             }
         } else if (fmodf(t, 1.2f) < 0.75f) {
             center(mobile_ ? "TAP TO CONTINUE" : "CLICK TO CONTINUE",
-                   y + 232 * k, 2.0f * k, Color(0.8f, 0.8f, 0.85f));
+                   fy, 2.0f * k, Color(0.8f, 0.8f, 0.85f));
         }
     }
 };

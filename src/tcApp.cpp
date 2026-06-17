@@ -15,7 +15,7 @@ void tcApp::setup() {
 
     jukebox().setup();
 
-    worldScore().fetch();   // load the global high score (HI WORLD)
+    worldScore().fetch();   // load the global leaderboard (HI WORLD)
 
     scene_ = make_shared<GameScene>();
     addChild(scene_);

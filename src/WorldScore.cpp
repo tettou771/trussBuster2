@@ -10,38 +10,35 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#include <cstdlib>
 #endif
 
 WorldScore& worldScore() { static WorldScore w; return w; }
 
 #ifdef __EMSCRIPTEN__
 
-// fetch/submit stash the latest {score, initials} into a JS global; poll()
+// fetch/submit stash the whole response object into globalThis.__tbWS; poll()
 // copies it back. POSTs carry token = sha256(salt:score:initials) so the Worker
 // can reject casual fakes.
 EM_JS(void, js_wsFetch, (), {
     fetch("https://trussbuster-score.tettou771.workers.dev/")
         .then(function(r) { return r.json(); })
-        .then(function(d) { globalThis.__tbWS = { score: (d.score | 0), initials: (d.initials || "---") }; })
+        .then(function(d) { globalThis.__tbWS = d; })
         .catch(function(e) {});
 });
 
-// shared POST helper: sign then send. `cleaned` initials are already A-Z0-9<=3.
 EM_JS(void, js_wsPost, (int s, const char* iniC, const char* saltC), {
-    var ini = UTF8ToString(iniC);
-    var salt = UTF8ToString(saltC);
-    var enc = new TextEncoder().encode(salt + ":" + s + ":" + ini);
-    crypto.subtle.digest("SHA-256", enc).then(function(buf) {
+    var ini = UTF8ToString(iniC), salt = UTF8ToString(saltC);
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + ":" + s + ":" + ini))
+      .then(function(buf) {
         var token = Array.from(new Uint8Array(buf)).map(function(b) {
             return b.toString(16).padStart(2, "0"); }).join("");
         return fetch("https://trussbuster-score.tettou771.workers.dev/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ score: s, initials: ini, token: token })
-        });
-    }).then(function(r) { return r.json(); })
-      .then(function(d) { if (d && d.score !== undefined) globalThis.__tbWS = { score: (d.score | 0), initials: (d.initials || "---") }; })
-      .catch(function(e) {});
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ score: s, initials: ini, token: token }) });
+      }).then(function(r) { return r.json(); })
+        .then(function(d) { if (d && d.board) globalThis.__tbWS = d; })
+        .catch(function(e) {});
 });
 
 // mobile: prompt() (a tap gesture is required so iOS shows the keyboard), then
@@ -51,25 +48,28 @@ EM_JS(void, js_wsPrompt, (int s, const char* saltC), {
     var ini = (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3);
     if (ini.length === 0) ini = "---";
     var salt = UTF8ToString(saltC);
-    var enc = new TextEncoder().encode(salt + ":" + s + ":" + ini);
-    crypto.subtle.digest("SHA-256", enc).then(function(buf) {
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + ":" + s + ":" + ini))
+      .then(function(buf) {
         var token = Array.from(new Uint8Array(buf)).map(function(b) {
             return b.toString(16).padStart(2, "0"); }).join("");
         return fetch("https://trussbuster-score.tettou771.workers.dev/", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ score: s, initials: ini, token: token })
-        });
-    }).then(function(r) { return r.json(); })
-      .then(function(d) { if (d && d.score !== undefined) globalThis.__tbWS = { score: (d.score | 0), initials: (d.initials || "---") }; })
-      .catch(function(e) {});
+            body: JSON.stringify({ score: s, initials: ini, token: token }) });
+      }).then(function(r) { return r.json(); })
+        .then(function(d) { if (d && d.board) globalThis.__tbWS = d; })
+        .catch(function(e) {});
 });
 
 EM_JS(int, js_wsScore, (), {
     return (globalThis.__tbWS !== undefined ? globalThis.__tbWS.score : -1) | 0;
 });
-
 EM_JS(void, js_wsInitials, (char* buf, int cap), {
-    var s = (globalThis.__tbWS !== undefined ? globalThis.__tbWS.initials : "---");
+    stringToUTF8((globalThis.__tbWS !== undefined ? globalThis.__tbWS.initials : "---") || "---", buf, cap);
+});
+// board serialised as "score,INI|score,INI|..."
+EM_JS(void, js_wsBoard, (char* buf, int cap), {
+    var b = (globalThis.__tbWS && globalThis.__tbWS.board) ? globalThis.__tbWS.board : [];
+    var s = b.map(function(e) { return (e.score | 0) + "," + (e.initials || "---"); }).join("|");
     stringToUTF8(s, buf, cap);
 });
 
@@ -90,15 +90,33 @@ void WorldScore::submit(int s, const std::string& ini) {
     js_wsPost(s, clean3(ini).c_str(), TB_SCORE_SALT);
 }
 void WorldScore::promptSubmit(int s) { js_wsPrompt(s, TB_SCORE_SALT); }
+
 void WorldScore::poll() {
     int s = js_wsScore();
-    if (s >= 0) {
-        score = s;
-        char b[8] = {0};
-        js_wsInitials(b, 8);
-        initials = b;
-        loaded = true;
-    }
+    if (s < 0) return;                 // nothing fetched yet
+    score = s;
+    char b[8] = {0};
+    js_wsInitials(b, 8);
+    initials = b;
+    // parse the board string
+    char buf[512] = {0};
+    js_wsBoard(buf, sizeof(buf));
+    board.clear();
+    std::string str(buf), entry;
+    auto flush = [&]() {
+        if (entry.empty()) return;
+        size_t comma = entry.find(',');
+        if (comma != std::string::npos) {
+            WorldEntry e;
+            e.score = atoi(entry.substr(0, comma).c_str());
+            e.initials = entry.substr(comma + 1);
+            board.push_back(e);
+        }
+        entry.clear();
+    };
+    for (char c : str) { if (c == '|') flush(); else entry += c; }
+    flush();
+    loaded = true;
 }
 
 #else   // native: no global leaderboard

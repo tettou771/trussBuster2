@@ -788,7 +788,7 @@ private:
     }
 
     // --- members -------------------------------------------------------------
-    static constexpr int   START_SHOTS   = 10;
+    static constexpr int   START_SHOTS   = 5;
     static constexpr int   GOLD_CHARGE   = 5;
     static constexpr float BLAST_R = 2.07f;    // blast reach (m) — 2/3 of the old 3.1
     static constexpr float BLAST_IMPULSE = 7000.0f;
