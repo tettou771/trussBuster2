@@ -35,9 +35,14 @@ public:
     void setup() override {
         setName("cannonball");
         setPos(startPos_);
-        // 12-sided convex-hull collider (constant size, never pulses)
-        auto* rb = addMod<RigidBody>(ColliderShape::convexHull(mineDodecaMesh()),
-                                     BodyType::Dynamic, 9000.0f);
+        // CUBE collider (constant). A round (sphere/12-gon) collider keeps
+        // rolling on the spinning deck and spirals off the edge before it can
+        // settle — like a marble on a turntable. A cube is carried and orbits
+        // stably like the blocks, so the ball actually comes to rest and arms.
+        // (The render is still a smooth ball in flight / a pulsing 12-sided die
+        // once armed — only the collision shape is a cube.)
+        auto* rb = addMod<RigidBody>(ColliderShape::box(Vec3(0.4f, 0.4f, 0.4f)),
+                                     BodyType::Dynamic, 7000.0f);
         rb->setFriction(0.9f).setRestitution(0.06f);
         rb->body().setLinearVelocity(velocity_);
         hitL_ = rb->onCollisionBegan.listen(this, &Cannonball::onHit);
@@ -123,13 +128,11 @@ private:
 
     void arm() {
         mine_ = true;
-        // Lock pitch & roll ONLY (yaw stays free). The mine can no longer tip or
-        // roll over — so it never rolls off the deck — but the spinning deck
-        // still carries it around by friction and spins it like any block (much
-        // more natural than pinning it in world space). Framerate-independent;
-        // the collider (the 12-sided hull) is untouched.
-        if (auto* rb = getMod<RigidBody>())
-            rb->lockRotation(true, false, true);
+        // No DOF locking: the cube collider is already stable on the deck (it
+        // doesn't roll, just like the blocks) and is carried/spun by the deck
+        // naturally. Locking rotation actually made it worse — a lock-frozen
+        // body can't rotate to relieve the spinning deck's contact forces, so
+        // they built up and popped it off the deck.
     }
 
     void detonate() {
