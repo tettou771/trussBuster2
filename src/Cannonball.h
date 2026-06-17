@@ -56,9 +56,11 @@ public:
 
         if (mine_) return;   // pinned in arm() via DOF locks; nothing to do
 
-        // detect coming to rest on the platform -> arm as a mine
+        // detect coming to rest on the platform (incl. ON TOP of a tall junk
+        // block / a stack — generous height cap; the pitch is capped at ~65° so
+        // a slow mid-air apex can't false-arm)
         bool onPlatform = platformDist(gp) < PLATFORM_RADIUS - 0.15f &&
-                          gp.y > PLATFORM_TOP - 0.1f && gp.y < PLATFORM_TOP + 1.2f;
+                          gp.y > PLATFORM_TOP - 0.1f && gp.y < PLATFORM_TOP + 5.0f;
         float speed = (rb && rb->body().isValid())
                           ? rb->body().getLinearVelocity().length() : 99.0f;
         // light rolling resistance once it's slow and on-deck, so it eventually
@@ -121,19 +123,13 @@ private:
 
     void arm() {
         mine_ = true;
-        // Lock the body's DOFs so a settled mine never rolls AND never gets
-        // dragged horizontally by the spinning deck (that drag, sampled once per
-        // frame, twitched the mine — worse at low frame rate). Only vertical
-        // translation stays free, so it can still drop if it loses support. This
-        // is framerate-independent and the collider (the 12-sided hull) is
-        // untouched. lockRotation/lockPos just flip DOF flags in place.
-        if (auto* rb = getMod<RigidBody>()) {
-            rb->freezeRotation();
-            rb->setLockPosX(true);
-            rb->setLockPosZ(true);
-            if (rb->body().isValid())
-                rb->body().setLinearVelocity(Vec3(0, 0, 0));
-        }
+        // Lock pitch & roll ONLY (yaw stays free). The mine can no longer tip or
+        // roll over — so it never rolls off the deck — but the spinning deck
+        // still carries it around by friction and spins it like any block (much
+        // more natural than pinning it in world space). Framerate-independent;
+        // the collider (the 12-sided hull) is untouched.
+        if (auto* rb = getMod<RigidBody>())
+            rb->lockRotation(true, false, true);
     }
 
     void detonate() {
