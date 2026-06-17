@@ -37,9 +37,22 @@ public:
     void setup() override {
         setName("cannonball");
         setPos(startPos_);
-        ColliderShape shape = mine_ ? ColliderShape::box(Vec3(0.4f, 0.4f, 0.4f))
-                                    : ColliderShape::sphere(0.22f);
-        auto* rb = addMod<RigidBody>(shape, BodyType::Dynamic, mine_ ? 7000.0f : 9000.0f);
+        ColliderShape shape;
+        float density;
+        if (mine_) {
+            // bomb: leave it on the blocks' scale (~448 kg) so it sits naturally
+            shape = ColliderShape::box(Vec3(0.4f, 0.4f, 0.4f));
+            density = 7000.0f;
+        } else {
+            // flying ball: heavy on purpose (~1000 kg) so a single shot bulldozes
+            // a whole row of blocks. The Mod takes density, not mass, so derive
+            // density = target mass / sphere volume  (vol = 4/3·π·r³ = 2/3·TAU·r³)
+            const float r = 0.22f;
+            const float vol = (2.0f / 3.0f) * TAU * r * r * r;
+            shape = ColliderShape::sphere(r);
+            density = 1000.0f / vol;   // ~22400
+        }
+        auto* rb = addMod<RigidBody>(shape, BodyType::Dynamic, density);
         rb->setFriction(0.9f).setRestitution(0.06f);
         rb->body().setLinearVelocity(velocity_);
         hitL_ = rb->onCollisionBegan.listen(this, &Cannonball::onHit);
