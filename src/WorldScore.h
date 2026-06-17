@@ -24,3 +24,7 @@ struct WorldScore {
 };
 
 WorldScore& worldScore();
+
+// Share a result (web: navigator.share on mobile / an X-post intent on desktop;
+// native: no-op). Must be called from a click/tap so the browser allows it.
+void webShare(int score, int wave);

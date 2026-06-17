@@ -7,6 +7,7 @@
 #include "Hud.h"
 #include "Mobile.h"
 #include "TouchControls.h"
+#include "ShareButton.h"
 
 using namespace std;
 using namespace tc;
@@ -38,6 +39,7 @@ private:
     shared_ptr<GameScene>     scene_;
     shared_ptr<Hud>           hud_;
     shared_ptr<TouchControls> touch_;
+    shared_ptr<ShareButton>   share_;
     bool                      mobile_ = false;
     bool                      debugPanel_ = false;
     float                     dbgPower_ = 0.7f;

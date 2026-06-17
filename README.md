@@ -1,82 +1,83 @@
 # TRUSS BUSTER ENDLESS
 
-回り続ける円形ステージの上のブロックを、大砲で延々と叩き落とす 3D 物理ゲーム。
-ステージ制なし＝**エンドレス**。TrussC + tcxPhysics (Jolt) + tcxImGui +
-tcxNodeInspector のショーケース。
+An endless 3D physics demolition game. A round platform spins; blocks ride it;
+you knock them off with a cannon — forever. Gold recharges your shots, gray junk
+clogs the deck, and stuck cannonballs become 12‑sided **bombs** you can set off
+to clear a jam. There's a global leaderboard. How far can you get?
 
-**▶ ブラウザで遊ぶ: https://tettou771.github.io/demo-trussBuster2/** （スマホ対応）
+### ▶ Play in your browser: **https://tettou771.github.io/demo-trussBuster2/**
 
-![genre](https://img.shields.io/badge/genre-endless%20demolition-orange)
+![gameplay](screenshots/gameplay.png)
 
-## 遊び方
+![title](screenshots/title.png)
 
-- **円筒の回転台**の上にブロックが乗っている。台はゆっくり回り続けるので、狙いは常に動く。
-- 最初は数個のブロック＋**球は10発**。
-- **得点ブロックを全部台から落とす**と、上から次のウェーブが降ってきて無限に続く。
-- **金ブロック**（キラッと光る）を落とすと**球が5発チャージ**される。これが生命線。
-- たまに**邪魔ブロック**（台と同じグレー・普通の1.5〜3倍・加点なし）が混じって降ってくる。
-  ウェーブが進むほど出現率が上がり、だんだん難しくなる。
-- 球が尽きて、飛んでいる球もなくなったら **GAME OVER** → スコア表示 → タイトルへ。
+---
 
-### 詰まったときの回避策：機雷
+## 🛠️ Built with TrussC
 
-大砲の球が**台に乗ったまま止まると、消えずに残る**（オレンジ色に変わる＝起爆待ち）。
-次の球がそれに**かすっただけで爆発**し、周囲のブロックを吹き飛ばす（効果音つき）。
-ブロックが詰まって手詰まりになったら、これで一掃できる。
+This whole game — the 3D rendering, input, the chiptune sound effects and music
+(generated at runtime, zero audio files), the bitmap‑font HUD, and the one‑command
+**WebGPU/WebAssembly** export that lets it run in a browser — is built on
+[**TrussC**](https://github.com/TrussC-org/TrussC), a lightweight creative‑coding
+framework I'm building: an openFrameworks‑like API implemented simply in modern
+C++ on top of [sokol](https://github.com/floooh/sokol).
 
-| キー | 操作 |
-|------|------|
-| クリック / タップ | スタート（リザルトからタイトルへも） |
-| ← → ↑ ↓ | 照準（ヨー / ピッチ） |
-| SPACE 長押し→離す | パワーゲージが往復、離した位置で発射 |
-| F1 | ノードインスペクタ (tcxNodeInspector) |
-| F2 | デバッグパネル (ImGui) |
+No engine, no editor — just a small framework and a few hundred lines of game
+code. Physics is [Jolt](https://github.com/jrouwe/JoltPhysics) via the bundled
+`tcxPhysics` addon. The global leaderboard is a tiny Cloudflare Worker + KV. The
+same source compiles to a native macOS/Windows/Linux app **and** to the browser.
 
-- **MAXショット**: ゲージ往復の頂点（白ゾーン、93%以上）でジャスト離すと強化ショット。
-  頂点でチック音が鳴るので耳でタイミングが取れる。
-- スコア: 通常ブロック 100 / 金ブロック 500（＋5発チャージ）/ 邪魔ブロック 0。
-- タイトル画面では CPU がアトラクトデモをプレイする。
+If you like what you see, TrussC is the thing that made it easy. 😎
 
-### スマホ（タッチ操作）
+## How to play
 
-スマホ／タブレットでは自動でタッチUIに切り替わる（左下に十字キー、右下にFIRE、タップでスタート）。
-判定は `src/Mobile.h`。デスクトップで試すには `TB_FORCE_TOUCH=1` で起動。
+Knock every **scoring block** off the spinning deck and a fresh wave drops in —
+it never ends, it just gets harder.
 
-## ビルド & 実行
+- **Gold blocks** glint and recharge the cannon (+5 shots). They're your lifeline.
+- **Gray junk blocks** score nothing and just clog the deck; they get heavier and
+  more common the longer you survive.
+- A cannonball that comes to rest on the deck stays as an armed **bomb**. The next
+  shot that grazes it detonates it and scatters the nearby blocks — your escape
+  hatch when the deck jams.
+- Out of shots with nothing in flight = **game over**. Beat the world record and
+  you get to enter your initials.
+
+| Input | Action |
+|------|--------|
+| Click / tap | start (and continue after game over) |
+| ← → ↑ ↓ | aim |
+| hold SPACE → release | charge & fire (release in the white zone for a MAX shot) |
+| SHARE button | post your run (score + link) on game over |
+
+On phones the controls switch to an on‑screen d‑pad + FIRE button automatically.
+
+## Build & run
+
+Built and managed with **trusscli** (TrussC's project tool):
 
 ```bash
-trusscli run            # native
-trusscli build --web    # wasm -> bin/trussBuster2.{html,js,wasm,data}
-cd bin && python3 -m http.server 8888
+trusscli run            # native build + launch
+trusscli build --web    # WebGPU/wasm -> bin/trussBuster2.{html,js,wasm,data}
 ```
 
-## AI Automation (MCP)
+The world leaderboard lives in `worldscore-worker/` (a Cloudflare Worker + KV).
+Score POSTs are signed (`sha256(salt:score:initials)`) so casual fakes are
+rejected; the salt is a Worker secret + a gitignored `src/Secret.h` (copy
+`src/Secret.h.example`).
 
-```bash
-TRUSSC_MCP=1 TRUSSC_MCP_PORT=8765 ./bin/trussBuster2.app/Contents/MacOS/trussBuster2
-```
+## Under the hood
 
-標準ツール（screenshot / node tree / input / ImGui 操作）に加え、ゲーム専用ツール:
+- **Rotating deck** — a kinematic cylinder spun a little each frame; Jolt's
+  `MoveKinematic` derives the angular velocity, so blocks are carried around by
+  friction, just like real objects on a turntable.
+- **Bombs** — a settled ball is removed and re‑spawned as a cube‑collider body
+  (cubes sit still on the deck where round shapes roll off) rendered as a pulsing
+  12‑sided die.
+- **Audio** — every sound effect and the looping BGM are synthesized at runtime
+  with TrussC's `ChipSound`. No asset files.
+- **Cross‑platform** — one codebase, native + browser. The leaderboard fetch/share
+  use the browser's `fetch`/`navigator.share` on web and no‑op natively.
 
-| Tool | 説明 |
-|------|------|
-| `get_state` | フェーズ・スコア・残弾・ウェーブ・残ブロック・機雷数・砲の状態を JSON で返す |
-| `set_aim {yaw, pitch}` | 照準セット（度、yaw + が左） |
-| `fire {power}` | 発射 (0-1) |
-| `press_start` | タイトルからスタート / リザルトからタイトルへ |
-| `set_autopilot {on}` | CPU プレイの ON/OFF |
-
-## 実装メモ
-
-- **回転台**: 旧バージョンの箱ステージ（幅6.4）を、直径1.1倍・同じ高さの**円筒**に置き換え。
-  キネマティック剛体を毎フレーム回転させ、Jolt の `MoveKinematic` が角速度を導出するので、
-  上のブロックは摩擦で一緒に公転する。
-- **機雷**: 台上で静止した球をキネマティックに切り替えて台と一緒に公転させ固定（球は丸いので
-  そのままだと回転する縁から転がり落ちてしまう）。次弾が近接（0.6m）すると起爆し、半径3.1m内の
-  ブロックに減衰インパルスを与えて吹き飛ばす。
-- **金ブロックの光沢**: 6面共通の共有テクスチャ（`GoldGlint`）を毎フレーム1回だけ更新。
-  3秒に一度、斜めのハイライトが横切る。
-- 効果音・BGM は全て `ChipSound` で実行時生成（アセットなし）。
-- ブロックは `RigidBody` + `ColliderRenderer` Mod を持つ自己完結 Node。台（円）の外周＋ふちより
-  外に出る、または上面より下に落ちると bust。
-- HUD はビットマップフォントのみ（レトロ表現）。
+Made with [TrussC](https://github.com/TrussC-org/TrussC) · physics by
+[Jolt](https://github.com/jrouwe/JoltPhysics).

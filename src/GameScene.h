@@ -210,6 +210,8 @@ public:
 
     void setMobile(bool m) { mobile_ = m; }
 
+    void share() { webShare(score_, waveCount_); }   // share button (web)
+
     // --- world high score (HI WORLD) -----------------------------------------
     bool isEnteringInitials() const {
         return phase_ == Phase::GameOver && newRecord_ && !submitted_;

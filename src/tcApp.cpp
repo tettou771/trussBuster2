@@ -31,6 +31,9 @@ void tcApp::setup() {
         addChild(touch_);   // after hud: drawn on top, hit-tested first
     }
 
+    share_ = make_shared<ShareButton>(scene_.get());
+    addChild(share_);       // game-over SHARE button (handles its own click)
+
     // starfield
     for (int i = 0; i < 90; i++) {
         stars_.push_back({random(0.0f, 1.0f), random(0.0f, 0.62f),
@@ -81,8 +84,11 @@ void tcApp::keyReleased(int key) {
 }
 
 void tcApp::mousePressed(const MouseEventArgs& e) {
-    // Click / tap anywhere advances the title / game-over / all-clear screens
-    // (and unlocks web audio on the first gesture). No-op during play.
+    // The SHARE button (a RectNode) already handled its own click; don't also
+    // treat that tap as "advance the screen".
+    if (share_ && share_->screenHit(e.x, e.y)) return;
+    // Click / tap anywhere else advances the title / game-over screens (and
+    // unlocks web audio on the first gesture). No-op during play.
     scene_->confirm();
 }
 
