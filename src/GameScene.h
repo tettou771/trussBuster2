@@ -202,6 +202,14 @@ public:
 
     void setAutopilot(bool on) { autopilot_ = on; aiTimer_ = 0; aiAiming_ = false; }
 
+    // debug: drop an already-armed mine on the deck (verification handle)
+    void debugSpawnMine() {
+        auto b = make_shared<Cannonball>(Vec3(0, 1.3f, PLATFORM_CZ), Vec3(0, 0, 0));
+        ballExplodeL_.push_back(b->exploded.listen(this, &GameScene::onBallExploded));
+        ballsRoot_->addChild(b);
+        b->forceArm();
+    }
+
     // Click / tap advances the non-gameplay screens (and satisfies the browser
     // autoplay gate so audio starts here on web). No-op during play.
     void confirm() {
@@ -232,11 +240,13 @@ public:
         defaultWorld().setGravity(Vec3(0, -12.0f, 0));
         defaultWorld().addGroundPlane(0.0f);
 
-        // fixed play camera; SHIFT+drag orbits (debug)
-        cam_.setTarget(0.0f, 1.2f, -4.5f);
-        cam_.setDistance(17.5f);
+        // fixed play camera; SHIFT+drag orbits (debug). Target sits between the
+        // cannon (z=6.5) and the deck (z=-6) and the camera is pulled back so the
+        // cannon stays on screen in the foreground.
+        cam_.setTarget(0.0f, 1.1f, 0.0f);
+        cam_.setDistance(20.5f);
         cam_.setAzimuth(0.22f);
-        cam_.setElevation(0.42f);     // a touch higher: reads the round deck
+        cam_.setElevation(0.40f);
         cam_.enableMouseInput();
         cam_.setDragModifier(EasyCam::Modifier::Shift);
 

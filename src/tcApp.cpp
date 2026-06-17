@@ -158,5 +158,11 @@ void tcApp::registerMcpTools() {
             scene_->setAutopilot(a.value("on", false));
             return scene_->stateJson();
         });
+
+    mcp::tool("spawn_mine", "Debug: drop an already-armed mine on the deck center")
+        .bind([this]() {
+            scene_->debugSpawnMine();
+            return scene_->stateJson();
+        });
 #endif
 }
