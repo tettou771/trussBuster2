@@ -56,7 +56,7 @@ public:
         setName("platform");
         setPos(PLATFORM_CX, 0.5f, PLATFORM_CZ);
         addMod<RigidBody>(ColliderShape::cylinder(PLATFORM_RADIUS, 1.0f),
-                          BodyType::Kinematic)->setFriction(1.6f);
+                          BodyType::Kinematic)->setFriction(1.12f);
         addMod<ColliderRenderer>()->setColor(toLinearColor(wallColor()));
     }
 
@@ -202,12 +202,9 @@ public:
 
     void setAutopilot(bool on) { autopilot_ = on; aiTimer_ = 0; aiAiming_ = false; }
 
-    // debug: drop an already-armed mine on the deck (verification handle)
+    // debug: drop an already-armed bomb on the deck (verification handle)
     void debugSpawnMine() {
-        auto b = make_shared<Cannonball>(Vec3(0, 1.3f, PLATFORM_CZ), Vec3(0, 0, 0));
-        ballExplodeL_.push_back(b->exploded.listen(this, &GameScene::onBallExploded));
-        ballsRoot_->addChild(b);
-        b->forceArm();
+        spawnBall(Vec3(0, 1.3f, PLATFORM_CZ), Vec3(0, 0, 0), true);
     }
 
     // Click / tap advances the non-gameplay screens (and satisfies the browser
@@ -312,6 +309,13 @@ public:
         if (phase_ == Phase::Title || (phase_ == Phase::Playing && autopilot_))
             updateAutopilot(dt);
 
+        // turn settled flying balls into bombs (deferred from onBallSettled so
+        // we addChild here, not mid child-iteration)
+        if (!pendingMines_.empty()) {
+            for (const Vec3& p : pendingMines_) spawnBall(p, Vec3(0, 0, 0), true);
+            pendingMines_.clear();
+        }
+
         // proximity detonation: a still-flying ball that grazes an armed mine
         // sets it off (a robust backstop to physical contact — "even a weak
         // touch explodes"). Collect mines and live balls, then test pairs.
@@ -337,9 +341,11 @@ public:
             }
         }
 
-        // prune ball-explosion listeners once the field is clear of balls
-        if (!ballsRoot_->getChildren().empty() && aliveBalls() == 0)
+        // prune ball event listeners once the field is clear of balls
+        if (!ballsRoot_->getChildren().empty() && aliveBalls() == 0) {
             ballExplodeL_.clear();
+            ballSettleL_.clear();
+        }
 
         // game over: out of shots, nothing in flight, dust settled
         if (phase_ == Phase::Playing && shots_ <= 0 && aliveFlyingBalls() == 0 &&
@@ -434,6 +440,8 @@ private:
         for (auto& c : ballsRoot_->getChildren()) c->destroy();
         blockL_.clear();
         ballExplodeL_.clear();
+        ballSettleL_.clear();
+        pendingMines_.clear();
         scoringLeft_ = 0;
         cannon_->cancelCharge();
         cannon_->setYawDeg(0);
@@ -557,15 +565,27 @@ private:
     }
 
     // --- events --------------------------------------------------------------
+    // Spawn a ball (flying sphere) or a bomb (armed cube) and wire its events.
+    void spawnBall(const Vec3& pos, const Vec3& vel, bool armed) {
+        auto b = make_shared<Cannonball>(pos, vel, armed);
+        ballExplodeL_.push_back(b->exploded.listen(this, &GameScene::onBallExploded));
+        if (!armed)
+            ballSettleL_.push_back(b->settled.listen(this, &GameScene::onBallSettled));
+        ballsRoot_->addChild(b);
+    }
+
     void onFired(Cannon::FireArgs& args) {
-        auto ball = make_shared<Cannonball>(args.pos, args.velocity);
-        ballExplodeL_.push_back(ball->exploded.listen(this, &GameScene::onBallExploded));
-        ballsRoot_->addChild(ball);
+        spawnBall(args.pos, args.velocity, false);
         if (phase_ == Phase::Playing) {
             shots_--;
             settle_ = 0;
         }
     }
+
+    // A flying ball came to rest -> queue a bomb in its place. Deferred (not
+    // spawned here) because this fires mid-update, while ballsRoot's children
+    // are being iterated; adding a child then would invalidate the iteration.
+    void onBallSettled(Vec3& pos) { pendingMines_.push_back(pos); }
 
     void onBlockBusted(Block* b, int points) {
         if (b->isJunk()) return;   // junk: not a target, no score, not counted
@@ -717,6 +737,8 @@ private:
     EventListener                firedL_;
     vector<EventListener>        blockL_;
     vector<EventListener>        ballExplodeL_;
+    vector<EventListener>        ballSettleL_;
+    vector<Vec3>                 pendingMines_;   // settled balls awaiting a bomb
     bool                         editMode_ = false;
 
     Phase phase_ = Phase::Title;
