@@ -373,10 +373,26 @@ private:
     // --- trajectory guide ----------------------------------------------------
     void drawTrajectory() {
         if (dotMesh_.getNumVertices() == 0) dotMesh_ = createSphere(0.06f, 10);
+        // yellow dotted guide: the MAX-power arc (always shown while aiming)
+        drawArc(Cannon::MAX_SPEED, Color(1.0f, 0.9f, 0.45f, 0.6f),
+                                   Color(1.0f, 0.85f, 0.45f, 0.9f));
+        // while charging, overlay THIS instant's power arc in opaque white, so
+        // you can read exactly where the shot lands if you release right now
+        if (cannon_->isCharging()) {
+            float spd = Cannon::MIN_SPEED +
+                        cannon_->getPower() * (Cannon::MAX_SPEED - Cannon::MIN_SPEED);
+            drawArc(spd, Color(1.0f, 1.0f, 1.0f, 1.0f), Color(1.0f, 1.0f, 1.0f, 1.0f));
+        }
+        setColor(1.0f);
+    }
+
+    // Sample a ballistic arc at `speed` and place dots at equal arc-length
+    // intervals, stopping at the first physics hit (bigger marker there).
+    void drawArc(float speed, const Color& dotC, const Color& hitC) {
         Vec3  p = cannon_->muzzlePos();
-        Vec3  v = cannon_->aimDir() * Cannon::MAX_SPEED;
+        Vec3  v = cannon_->aimDir() * speed;
         float g = defaultWorld().getGravity().y;
-        setColor(1.0f, 0.9f, 0.45f, 0.6f);
+        setColor(dotC);
         const float step = 0.02f, gap = 0.55f;
         float acc = gap;
         Vec3  prev = p;
@@ -387,7 +403,7 @@ private:
             float len = seg.length();
             if (len > 1e-6f) {
                 if (auto h = defaultWorld().raycast(prev, seg / len, len)) {
-                    setColor(1.0f, 0.85f, 0.45f, 0.9f);
+                    setColor(hitC);
                     pushMatrix();
                     translate(h.point);
                     scale(1.8f, 1.8f, 1.8f);
@@ -407,7 +423,6 @@ private:
             }
             if (cur.y < 0.05f) break;
         }
-        setColor(1.0f);
     }
 
     // --- field management ----------------------------------------------------
@@ -572,10 +587,10 @@ private:
     // a stuck-ball mine detonated: boom + scatter everything nearby
     void onBallExploded(Vec3& pos) {
         jukebox().explosion.play();
-        auto fx = make_shared<ExplosionFx>(pos, 2.6f);
+        auto fx = make_shared<ExplosionFx>(pos, 1.8f);
         addChild(fx);
 
-        const float R = 3.1f;
+        const float R = BLAST_R;
         for (auto& c : towerRoot_->getChildren()) {
             if (c->isDead()) continue;
             auto* b = dynamic_cast<Block*>(c.get());
@@ -585,7 +600,7 @@ private:
             Vec3 d = b->getGlobalPos() - pos;
             float dist = d.length();
             if (dist > R) continue;
-            float falloff = 1.0f - dist / R;
+            float falloff = 1.0f - dist / R;   // linear
             Vec3 dir = (dist > 1e-3f) ? d / dist : Vec3(0, 1, 0);
             dir.y += 0.55f;                    // lift so blocks fly off, not slide
             float len = dir.length();
@@ -685,6 +700,7 @@ private:
     // --- members -------------------------------------------------------------
     static constexpr int   START_SHOTS   = 10;
     static constexpr int   GOLD_CHARGE   = 5;
+    static constexpr float BLAST_R = 2.07f;    // blast reach (m) — 2/3 of the old 3.1
     static constexpr float BLAST_IMPULSE = 7000.0f;
 
     EasyCam cam_;

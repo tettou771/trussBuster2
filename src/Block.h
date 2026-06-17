@@ -36,13 +36,23 @@ public:
         if (!renderer_) return;   // before setup: just store
         // re-create the body with the new collider (addMod replaces the old
         // mod; its onDestroy removes the old body from the world)
-        auto* rb = addMod<RigidBody>(ColliderShape::box(s), BodyType::Dynamic, 800.0f);
+        auto* rb = addMod<RigidBody>(ColliderShape::box(s), BodyType::Dynamic, densityFor(s));
         rb->setFriction(def_.friction).setRestitution(0.05f);
         renderer_ = addMod<ColliderRenderer>();   // recreate: drops the cached mesh
         applyLook();
     }
     bool getFalse() const { return false; }
     void doDelete(bool v) { if (v) destroy(); }   // inspector checkbox = button
+
+    // Mass scales with SIZE (mean of the 3 edges), not volume. With a fixed
+    // density the big junk blocks weighed ~size^3 and were immovable; here a
+    // block twice as wide is only twice as heavy, so it still shoves around.
+    static float densityFor(const Vec3& s) {
+        constexpr float MASS_PER_UNIT = 300.0f;          // kg per 1.0 of mean edge
+        float avg = (s.x + s.y + s.z) / 3.0f;
+        float vol = std::max(1e-4f, s.x * s.y * s.z);
+        return MASS_PER_UNIT * avg / vol;                // density = mass / volume
+    }
 
     using Super = Node;
     TC_REFLECT(Block, Node) {
@@ -56,7 +66,7 @@ public:
         setName(def_.gold ? "goldBlock" : def_.junk ? "junkBlock" : "block");
         setPos(def_.pos);
         auto* rb = addMod<RigidBody>(ColliderShape::box(def_.size),
-                                     BodyType::Dynamic, 800.0f);
+                                     BodyType::Dynamic, densityFor(def_.size));
         rb->setFriction(def_.friction).setRestitution(0.05f);
         renderer_ = addMod<ColliderRenderer>();
         applyLook();

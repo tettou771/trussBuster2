@@ -10,14 +10,17 @@ using namespace std;
 using namespace tc;
 using namespace tcx;
 
-// A fired cannonball: a heavy dynamic sphere that plays impact sounds.
-//
-// Mine mechanic (the "stuck" escape hatch): a ball that comes to rest ON the
-// platform is NOT removed — it arms as a mine. Arming swaps the rolling sphere
-// collider for a BOX (so it obeys normal physics but resists rolling) and the
-// render switches to a 12-sided die. When the NEXT fired ball touches/grazes
-// it, the mine detonates: it fires `exploded` (the scene scatters nearby
-// blocks) and disappears. A ball that never settles expires on the age timer.
+// Shared geometry. The COLLIDER is a 12-sided convex hull (constant), so a
+// cannonball is physically a dodecahedron the whole time — it just renders as a
+// smooth ball in flight and as the faceted die once it arms (no mid-flight body
+// swap, which would crash on a stale Jolt contact).
+inline const Mesh& ballSphereMesh() { static Mesh m = createSphere(0.22f, 18); return m; }
+inline const Mesh& mineDodecaMesh() { static Mesh m = createDodecahedron(0.26f); return m; }
+
+// A fired cannonball. Comes to rest on the deck -> arms as a mine (the jam
+// escape): rotation is frozen so it never rolls, and it pulses (size + glow)
+// like it's about to blow. The next ball to graze it detonates it, scattering
+// nearby blocks. Anything that drops off the deck is removed promptly.
 class Cannonball : public Node {
 public:
     Cannonball(const Vec3& pos, const Vec3& velocity)
@@ -27,15 +30,14 @@ public:
 
     bool isMine() const { return mine_; }
     void detonateNow() { detonate(); }   // proximity trigger (scene-driven)
-    void forceArm() { mine_ = true; }    // debug: spawn straight as a mine
+    void forceArm() { arm(); }           // debug: spawn straight as a mine
 
     void setup() override {
         setName("cannonball");
         setPos(startPos_);
-        auto* rb = addMod<RigidBody>(ColliderShape::sphere(0.22f),
+        // 12-sided convex-hull collider (constant size, never pulses)
+        auto* rb = addMod<RigidBody>(ColliderShape::convexHull(mineDodecaMesh()),
                                      BodyType::Dynamic, 9000.0f);
-        // low restitution + grippy: a ball that reaches the deck should shed
-        // its energy and settle (so it can arm) instead of bouncing away
         rb->setFriction(0.9f).setRestitution(0.06f);
         rb->body().setLinearVelocity(velocity_);
         hitL_ = rb->onCollisionBegan.listen(this, &Cannonball::onHit);
@@ -49,17 +51,17 @@ public:
         auto* rb = getMod<RigidBody>();
         Vec3 gp = getGlobalPos();
 
+        // anything that has dropped off the deck disappears promptly
+        if (gp.y < 0.5f) { destroy(); return; }
+
         if (mine_) {
-            // a mine obeys normal physics but resists rolling: heavily damp its
-            // spin and horizontal drift each frame (keep vertical so gravity
-            // still acts). It can still be knocked off the deck and fall — that's
-            // fine, no artificial pinning. Render is a 12-sided die.
+            // rotation is frozen (set in arm) so it never rolls; lightly damp
+            // horizontal drift so it mostly stays where it settled but can still
+            // be shoved off the edge (then it falls and is removed above).
             if (rb && rb->body().isValid()) {
                 Vec3 lv = rb->body().getLinearVelocity();
-                rb->body().setLinearVelocity(Vec3(lv.x * 0.6f, lv.y, lv.z * 0.6f));
-                rb->body().setAngularVelocity(rb->body().getAngularVelocity() * 0.35f);
+                rb->body().setLinearVelocity(Vec3(lv.x * 0.85f, lv.y, lv.z * 0.85f));
             }
-            if (gp.y < -10.0f) destroy();
             return;
         }
 
@@ -68,14 +70,13 @@ public:
                           gp.y > PLATFORM_TOP - 0.1f && gp.y < PLATFORM_TOP + 1.2f;
         float speed = (rb && rb->body().isValid())
                           ? rb->body().getLinearVelocity().length() : 99.0f;
-        // A sphere would otherwise roll off the round, spinning deck before it
-        // can settle. Once it's down on the deck and already slow, bleed its
-        // horizontal velocity so it digs in where it landed (keep the vertical
-        // component so gravity still seats it).
+        // light rolling resistance once it's slow and on-deck, so it eventually
+        // settles instead of rolling off the round, spinning rim — but gentle
+        // (≈half the old damping) so it keeps rolling smoothly for a while
         if (onPlatform && speed < 2.0f && rb && rb->body().isValid()) {
             Vec3 lv = rb->body().getLinearVelocity();
-            rb->body().setLinearVelocity(Vec3(lv.x * 0.82f, lv.y, lv.z * 0.82f));
-            rb->body().setAngularVelocity(rb->body().getAngularVelocity() * 0.82f);
+            rb->body().setLinearVelocity(Vec3(lv.x * 0.91f, lv.y, lv.z * 0.91f));
+            rb->body().setAngularVelocity(rb->body().getAngularVelocity() * 0.91f);
         }
         if (onPlatform && speed < 0.9f) {
             restTime_ += dt;
@@ -83,22 +84,37 @@ public:
         } else {
             restTime_ = 0.0f;
         }
-        if (age_ > 7.0f) destroy();          // never settled -> expire
-        if (gp.y < -10.0f) destroy();         // dropped out of the world
+        if (age_ > 6.0f) destroy();          // never settled -> expire
     }
 
     void draw() override {
-        static Mesh sphereMesh = createSphere(0.22f, 18);
-        static Mesh dodecaMesh = createDodecahedron(0.30f);
-        static Material flyMat, mineMat;
-        static bool matInit = false;
-        if (!matInit) {
+        static Material flyMat;
+        static Material mineMat;
+        static bool init = false;
+        if (!init) {
             flyMat.setBaseColor(toLinearColor(Color(0.22f, 0.23f, 0.28f)));
-            mineMat.setBaseColor(toLinearColor(Color(0.95f, 0.42f, 0.12f)));
-            matInit = true;
+            mineMat.setBaseColor(toLinearColor(Color(0.95f, 0.40f, 0.10f)));
+            init = true;
         }
-        if (mine_) { setMaterial(mineMat); dodecaMesh.draw(); clearMaterial(); }
-        else       { setMaterial(flyMat);  sphereMesh.draw();  clearMaterial(); }
+        if (!mine_) {
+            setMaterial(flyMat);
+            ballSphereMesh().draw();
+            clearMaterial();
+            return;
+        }
+        // armed: pulse the LOOK only (collider stays constant). ~1 Hz, grows
+        // ~5% and glows brighter — reads as "about to blow".
+        float t = getElapsedTimef();
+        float pulse = 0.5f * (1.0f + sinf(TAU * t));     // 0..1, 1 Hz
+        float s = 1.0f + 0.05f * pulse;                  // +5% at the peak
+        mineMat.setEmissive(toLinearColor(Color(1.0f, 0.45f, 0.12f)));
+        mineMat.setEmissiveStrength(0.12f + 0.6f * pulse);
+        setMaterial(mineMat);
+        pushMatrix();
+        scale(s, s, s);
+        mineDodecaMesh().draw();
+        popMatrix();
+        clearMaterial();
     }
 
 private:
@@ -112,11 +128,14 @@ private:
     }
 
     void arm() {
-        // Just flag it — the body is NOT recreated (recreating a RigidBody mid
-        // physics-step leaves Jolt holding a stale contact, which crashes the
-        // next dispatch). update() damps the sphere so it resists rolling, and
-        // draw() renders the 12-sided die.
         mine_ = true;
+        // freeze rotation so it never rolls (the collider stays the 12-sided
+        // hull; lockRotation just flips DOF flags in place — no body recreate)
+        if (auto* rb = getMod<RigidBody>()) {
+            rb->freezeRotation();
+            if (rb->body().isValid())
+                rb->body().setAngularVelocity(Vec3(0, 0, 0));
+        }
     }
 
     void detonate() {
