@@ -16,6 +16,7 @@ struct WorldScore {
     void fetch();                                   // GET the world record
     void submit(int s, const std::string& initials);// POST (server keeps the max)
     void poll();                                    // copy any async result in
+    void promptSubmit(int s);                       // mobile web: prompt() then POST
 };
 
 WorldScore& worldScore();

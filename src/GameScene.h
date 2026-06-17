@@ -225,8 +225,17 @@ public:
     // Click / tap advances the non-gameplay screens (and satisfies the browser
     // autoplay gate so audio starts here on web). No-op during play / entry.
     void confirm() {
-        if (phase_ == Phase::Title)         startGame();
-        else if (phase_ == Phase::GameOver && !isEnteringInitials()) toTitle();
+        if (phase_ == Phase::Title) { startGame(); return; }
+        if (phase_ == Phase::GameOver) {
+            if (isEnteringInitials()) {
+#ifdef __EMSCRIPTEN__
+                // mobile web: a tap is the gesture iOS needs to pop the keyboard
+                if (mobile_) { worldScore().promptSubmit(score_); submitted_ = true; }
+#endif
+                return;     // a tap during entry is for initials, not for leaving
+            }
+            toTitle();
+        }
     }
 
     void handleKey(int key, bool down) {
@@ -682,11 +691,13 @@ private:
         newRecord_ = worldScore().loaded && score_ > worldScore().score && score_ > 0;
         submitted_ = false;
         initialsEntry_.clear();
-        if (newRecord_ && mobile_) {        // no keyboard: record anonymously
+#ifndef __EMSCRIPTEN__
+        if (newRecord_ && mobile_) {        // native mobile: no soft keyboard
             initialsEntry_ = "YOU";
             submitInitials();
             newRecord_ = false;
         }
+#endif      // web mobile keeps newRecord_: a tap pops the keyboard (confirm())
 
         // longer dwell when typing initials; otherwise the usual 5 s. On
         // timeout, still record the score (with whatever initials were typed)

@@ -179,14 +179,17 @@ private:
         if (scene_->isEnteringInitials()) {
             if (fmodf(t, 0.7f) < 0.45f)
                 center("NEW WORLD RECORD!", y + 232 * k, 2.5f * k, Color(1.0f, 0.9f, 0.3f));
-            string e = scene_->getInitialsEntry();
-            string slot;
-            for (int i = 0; i < 3; i++)
-                slot += (i < (int)e.size()) ? string(1, e[i])
-                      : (i == (int)e.size() && fmodf(t, 0.6f) < 0.3f) ? "_" : " ";
-            center("INITIALS [" + slot + "]", y + 270 * k, 2.5f * k, Color(1.0f, 1.0f, 1.0f));
-            if (!mobile_)
+            if (mobile_) {
+                center("TAP TO ENTER INITIALS", y + 272 * k, 2.0f * k, Color(1.0f, 1.0f, 1.0f));
+            } else {
+                string e = scene_->getInitialsEntry();
+                string slot;
+                for (int i = 0; i < 3; i++)
+                    slot += (i < (int)e.size()) ? string(1, e[i])
+                          : (i == (int)e.size() && fmodf(t, 0.6f) < 0.3f) ? "_" : " ";
+                center("INITIALS [" + slot + "]", y + 270 * k, 2.5f * k, Color(1.0f, 1.0f, 1.0f));
                 center("TYPE 3 LETTERS + ENTER", y + 304 * k, 1.5f * k, Color(0.7f, 0.7f, 0.75f));
+            }
         } else if (fmodf(t, 1.2f) < 0.75f) {
             center(mobile_ ? "TAP TO CONTINUE" : "CLICK TO CONTINUE",
                    y + 232 * k, 2.0f * k, Color(0.8f, 0.8f, 0.85f));

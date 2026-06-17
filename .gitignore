@@ -38,3 +38,6 @@ Thumbs.db
 # Secrets (don't commit these!)
 .env
 secrets.*
+
+# world-score signing salt (local only)
+src/Secret.h
