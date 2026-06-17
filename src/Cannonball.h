@@ -106,7 +106,7 @@ public:
         // ~5% and glows brighter — reads as "about to blow".
         float t = getElapsedTimef();
         float pulse = 0.5f * (1.0f + sinf(TAU * t));     // 0..1, 1 Hz
-        float s = 1.0f + 0.05f * pulse;                  // +5% at the peak
+        float s = 1.0f + 0.15f * pulse;                  // +15% at the peak
         mineMat.setEmissive(toLinearColor(Color(1.0f, 0.45f, 0.12f)));
         mineMat.setEmissiveStrength(0.12f + 0.6f * pulse);
         setMaterial(mineMat);
@@ -120,10 +120,11 @@ public:
 private:
     void onHit(Collision& c) {
         jukebox().playImpact(c.speed);
-        // armed mine grazed by a freshly fired (non-mine) ball -> detonate
+        // armed mine grazed by a freshly fired (non-mine) ball -> detonate, and
+        // the triggering ball is consumed by the blast
         if (mine_ && c.otherNode && c.otherNode->getName() == "cannonball") {
             auto* ob = dynamic_cast<Cannonball*>(c.otherNode);
-            if (ob && !ob->isMine()) detonate();
+            if (ob && !ob->isMine()) { ob->destroy(); detonate(); }
         }
     }
 

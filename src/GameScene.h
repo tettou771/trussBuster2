@@ -325,9 +325,12 @@ public:
                 else             flying.push_back(b);
             }
             for (auto* m : mines) {
+                if (m->isDead()) continue;
                 for (auto* f : flying) {
+                    if (f->isDead()) continue;
                     if ((m->getGlobalPos() - f->getGlobalPos()).length() < 0.6f) {
                         m->detonateNow();
+                        f->destroy();      // the triggering shot is consumed
                         break;
                     }
                 }
