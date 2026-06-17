@@ -688,9 +688,13 @@ private:
             newRecord_ = false;
         }
 
-        // longer dwell when typing initials; otherwise the usual 5 s
+        // longer dwell when typing initials; otherwise the usual 5 s. On
+        // timeout, still record the score (with whatever initials were typed)
+        // so a beaten record is never lost just because Enter wasn't pressed.
         callAfter(newRecord_ ? 15.0 : 5.0, [this]() {
-            if (phase_ == Phase::GameOver) toTitle();
+            if (phase_ != Phase::GameOver) return;
+            if (newRecord_ && !submitted_) submitInitials();
+            toTitle();
         });
     }
 
