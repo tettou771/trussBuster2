@@ -64,7 +64,7 @@ EM_JS(void, js_wsPrompt, (int s, const char* saltC), {
 EM_JS(void, js_share, (int score, int wave), {
     var url = "https://tettou771.github.io/demo-trussBuster2/";
     var text = "I reached Wave " + wave + " with a score of " + score +
-               " in TRUSS BUSTER ENDLESS! Can you beat it?";
+               " in TRUSS BUSTER! Can you beat it?";
     var x = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) +
             "&url=" + encodeURIComponent(url);
     window.open(x, "_blank");

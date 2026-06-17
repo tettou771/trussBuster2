@@ -1,4 +1,4 @@
-// World leaderboard API for TRUSS BUSTER ENDLESS.
+// World leaderboard API for TRUSS BUSTER.
 //   GET  /                        -> { score, initials, board:[{score,initials}..] }
 //   POST / {score,initials,token} -> same shape after inserting
 //

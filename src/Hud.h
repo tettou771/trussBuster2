@@ -90,8 +90,6 @@ private:
         Color logoCol = Color::fromOKLCH(0.85f, 0.13f, fmodf(t * 0.07f, 1.0f));
         float logoScale = std::min(8.0f, (W - 40) / (12 * 8.0f));
         centerShadow("TRUSS BUSTER", H * 0.18f, logoScale, logoCol);
-        center("ENDLESS", H * 0.18f + logoScale * 9.0f + 6, 2.5f * uiScale(),
-               Color(0.7f, 0.9f, 0.75f));
 
         if (fmodf(t, 1.2f) < 0.75f)
             centerShadow(mobile_ ? "TAP TO START" : "CLICK TO START",

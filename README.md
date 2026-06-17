@@ -1,4 +1,4 @@
-# TRUSS BUSTER ENDLESS
+# TRUSS BUSTER
 
 An endless 3D physics demolition game. A round platform spins; blocks ride it;
 you knock them off with a cannon — forever. Gold recharges your shots, gray junk
