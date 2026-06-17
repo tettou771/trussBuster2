@@ -16,6 +16,8 @@ public:
     TouchButton(int key, const string& glyph, float glyphScale, GameScene* scene)
         : key_(key), glyph_(glyph), glyphScale_(glyphScale), scene_(scene) {}
 
+    void setHint(bool h) { hint_ = h; }
+
     void setup() override {
         setName("btn_" + glyph_);
         enableEvents();
@@ -28,12 +30,33 @@ public:
     void draw() override {
         if (shapeW_ != getWidth() || shapeH_ != getHeight()) buildShape();
         setBlendMode(BlendMode::Alpha);
+
+        // attention: a fading squircle halo radiates out + a "HOLD" caption,
+        // hinting that fire is a press-and-hold (driven externally, e.g. wave 1)
+        bool hinting = hint_ && !pressed_;
+        if (hinting) {
+            float ph = fmodf(getElapsedTimef() * 1.0f, 1.0f);   // 0..1 loop
+            float sc = 1.0f + ph * 0.7f;
+            pushMatrix();
+            translate(getWidth() * 0.5f, getHeight() * 0.5f);
+            scale(sc, sc, 1.0f);
+            translate(-getWidth() * 0.5f, -getHeight() * 0.5f);
+            setColor(1.0f, 0.9f, 0.45f, (1.0f - ph) * 0.45f);
+            shape_.drawFill();
+            popMatrix();
+        }
+
         fill();
-        setColor(1.0f, 1.0f, 1.0f, pressed_ ? 0.34f : 0.13f);
+        float pulse = hinting ? 0.12f * (0.5f + 0.5f * sinf(getElapsedTimef() * 5.0f)) : 0.0f;
+        setColor(1.0f, 1.0f, 1.0f, pressed_ ? 0.34f : 0.13f + pulse);
         shape_.drawFill();
         setColor(1.0f, 1.0f, 1.0f, pressed_ ? 0.95f : 0.55f);
         setTextAlign(Direction::Center, Direction::Center);
         drawBitmapString(glyph_, getWidth() * 0.5f, getHeight() * 0.5f, glyphScale_);
+        if (hinting) {
+            setColor(1.0f, 0.95f, 0.6f, 0.55f + 0.45f * sinf(getElapsedTimef() * 4.0f));
+            drawBitmapString("HOLD!", getWidth() * 0.5f, -14.0f, 1.6f);
+        }
         setTextAlign(Direction::Left, Direction::Top);
     }
 
@@ -68,6 +91,7 @@ private:
     float         glyphScale_;
     GameScene*    scene_;
     bool          pressed_ = false;
+    bool          hint_ = false;
     EventListener releaseL_;
     Path          shape_;
     float         shapeW_ = -1, shapeH_ = -1;
@@ -106,6 +130,11 @@ public:
         left_->setPos(cx - s * 1.5f - gap, cy - s * 0.5f);
         right_->setPos(cx + s * 0.5f + gap, cy - s * 0.5f);
         fire_->setPos(W - 84 - 24, H - 60 - 28);
+
+        // first wave only: nudge the player that FIRE is a press-and-hold
+        fire_->setHint(scene_->getPhase() == Phase::Playing &&
+                       scene_->getWave() == 1 &&
+                       !scene_->cannon()->isCharging());
     }
 
 private:

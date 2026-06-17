@@ -97,7 +97,7 @@ private:
 
         center("HI  " + pad(scene_->getHiScore()), H * 0.51f, 2.0f * uiScale(),
                Color(0.95f, 0.6f, 0.5f));
-        drawBoard(H * 0.575f, 8, 1.6f * uiScale());
+        drawBoard(H * 0.56f, 10, 1.4f * uiScale());
 
         setColor(0.4f, 0.42f, 0.5f);
         drawBitmapString("build " __DATE__ " " __TIME__, 24, getHeight() - 14, 1.0f);
@@ -174,9 +174,11 @@ private:
             if (inZone) setColor(1.0f, 1.0f, 1.0f);
             else        setColor(Color::fromHSB(0.33f * (1.0f - p), 0.85f, 0.95f));
             drawRect(gx, gy, gw * p, gh);
-        } else if (!mobile_ && !scene_->isAutopilot()) {
-            setColor(0.6f, 0.62f, 0.7f);
-            drawBitmapString("HOLD SPACE TO FIRE", 24, H - 100, 1.5f);
+        } else if (!mobile_ && !scene_->isAutopilot() && scene_->getWave() == 1) {
+            // first wave only: pulsing reminder that fire is a press-and-HOLD
+            float a = 0.55f + 0.45f * sinf(getElapsedTimef() * 4.0f);
+            setColor(1.0f, 0.95f, 0.6f, a);
+            drawBitmapString("HOLD SPACE TO CHARGE & FIRE", 24, H - 104, 1.8f);
         }
     }
 
@@ -192,8 +194,12 @@ private:
         float fy = y + 300 * k;
 
         if (scene_->isEnteringInitials()) {
-            if (fmodf(t, 0.7f) < 0.45f)
-                center("NEW WORLD RECORD!", fy, 2.2f * k, Color(1.0f, 0.9f, 0.3f));
+            if (fmodf(t, 0.7f) < 0.45f) {
+                int rk = scene_->getWorldRank();
+                string msg = (rk == 1) ? "NEW WORLD RECORD!"
+                                       : "WORLD RANK #" + to_string(rk) + " !";
+                center(msg, fy, 2.2f * k, Color(1.0f, 0.9f, 0.3f));
+            }
             if (mobile_) {
                 center("TAP TO ENTER INITIALS", fy + 34 * k, 2.0f * k, Color(1.0f, 1.0f, 1.0f));
             } else {

@@ -10,8 +10,12 @@ using namespace std;
 using namespace tc;
 using namespace tcx;
 
-inline const Mesh& ballSphereMesh() { static Mesh m = createSphere(0.22f, 18); return m; }
-inline const Mesh& mineDodecaMesh() { static Mesh m = createDodecahedron(0.26f); return m; }
+// Shared GPU meshes. Intentionally leaked (new, never deleted): a function-local
+// `static Mesh` would be destroyed during __cxa_finalize at process exit — AFTER
+// sokol_gfx has shut down — so its ~Mesh()->sg_destroy_buffer() segfaults. The OS
+// reclaims the buffers on exit anyway, so leaking is the correct fix.
+inline const Mesh& ballSphereMesh() { static Mesh* m = new Mesh(createSphere(0.22f, 18)); return *m; }
+inline const Mesh& mineDodecaMesh() { static Mesh* m = new Mesh(createDodecahedron(0.26f)); return *m; }
 
 // A cannonball has two lives, as two SEPARATE bodies (we never swap a collider
 // on a live body — that crashes on a stale Jolt contact):

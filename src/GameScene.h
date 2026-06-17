@@ -213,6 +213,19 @@ public:
     void share() { webShare(score_, waveCount_); }   // share button (web)
 
     // --- world high score (HI WORLD) -----------------------------------------
+    static constexpr int BOARD_N = 10;   // leaderboard size (matches the Worker)
+
+    // rank this game's score would take on the world board (1 = #1 / record)
+    int worldRank() const {
+        int ahead = 0;
+        for (auto& e : worldScore().board) if (e.score > score_) ahead++;
+        return ahead + 1;
+    }
+    int getWorldRank() const { return worldRank(); }
+    bool madeBoard() const {
+        return worldScore().loaded && score_ > 0 && worldRank() <= BOARD_N;
+    }
+
     bool isEnteringInitials() const {
         return phase_ == Phase::GameOver && newRecord_ && !submitted_;
     }
@@ -415,10 +428,53 @@ protected:
 
     void endDraw() override {
         if (phase_ == Phase::Playing && !autopilot_) drawTrajectory();
-        cam_.end();
+        captureGoldLabels();   // while the perspective camera context is active
+        cam_.end();            // end() swaps currentCameraContext back to 2D
+        drawGoldLabels();      // 2D overlay at the captured screen positions
     }
 
 private:
+    // "+5 SHOTS" tags above gold blocks teach players that busting a gold block
+    // recharges the cannon. The bitmap billboard helper only works in 2D, so we
+    // project each block's world position to screen pixels through the active
+    // perspective camera (must be done BEFORE cam.end() resets the context),
+    // then draw the (bobbing) text in screen space afterwards.
+    void captureGoldLabels() {
+        goldLabelScreen_.clear();
+        if (!towerRoot_) return;
+        auto ctx = internal::currentCameraContext;
+        if (!ctx) return;
+        for (auto& c : towerRoot_->getChildren()) {
+            if (c->isDead()) continue;
+            auto* b = dynamic_cast<Block*>(c.get());
+            if (!b || !b->isGold() || b->isBusted()) continue;
+            Vec3 wp = b->getGlobalPos();
+            wp.y += b->getSize().y * 0.5f + 0.55f;
+            Vec3 s = ctx->worldToScreen(wp);
+            if (s.z < 0.0f) continue;                    // behind the camera
+            goldLabelScreen_.push_back(s);
+        }
+    }
+
+    void drawGoldLabels() {
+        if (goldLabelScreen_.empty()) return;
+        float t = getElapsedTimef();
+        float bob   = sinf(t * 3.0f) * 7.0f;             // up/down attention (px)
+        float pulse = 0.7f + 0.3f * sinf(t * 4.5f);
+        Direction sh = getTextAlignH(), sv = getTextAlignV();
+        setBlendMode(BlendMode::Alpha);
+        setTextAlign(Direction::Center, Direction::Center);
+        for (auto& s : goldLabelScreen_) {
+            float y = s.y - bob;
+            setColor(0.0f, 0.0f, 0.0f, 0.5f);
+            drawBitmapString("+5 SHOTS", s.x + 1.5f, y + 1.5f, 1.6f);
+            setColor(1.0f, 0.86f, 0.28f, pulse);
+            drawBitmapString("+5 SHOTS", s.x, y, 1.6f);
+        }
+        setColor(1.0f);
+        setTextAlign(sh, sv);
+    }
+
     // --- trajectory guide ----------------------------------------------------
     void drawTrajectory() {
         if (dotMesh_.getNumVertices() == 0) dotMesh_ = createSphere(0.06f, 10);
@@ -692,8 +748,8 @@ private:
         jukebox().bgm.stop();
         jukebox().overJingle.play();
 
-        // beat the world record? (only when we actually know it — web)
-        newRecord_ = worldScore().loaded && score_ > worldScore().score && score_ > 0;
+        // made the world leaderboard (top 10)? — not just #1 (only known on web)
+        newRecord_ = madeBoard();
         submitted_ = false;
         initialsEntry_.clear();
 #ifndef __EMSCRIPTEN__
@@ -811,6 +867,7 @@ private:
     vector<EventListener>        ballExplodeL_;
     vector<EventListener>        ballSettleL_;
     vector<Vec3>                 pendingMines_;   // settled balls awaiting a bomb
+    vector<Vec3>                 goldLabelScreen_; // gold-block "+5 SHOTS" tag positions (px)
     bool                         editMode_ = false;
 
     Phase phase_ = Phase::Title;

@@ -58,4 +58,6 @@ private:
     bool    inited_ = false;
 };
 
-inline GoldGlint& goldGlint() { static GoldGlint g; return g; }
+// Intentionally leaked: holds a GPU Texture that must not be destroyed during
+// __cxa_finalize (after sokol_gfx shutdown). See ballSphereMesh() in Cannonball.h.
+inline GoldGlint& goldGlint() { static GoldGlint* g = new GoldGlint(); return *g; }
