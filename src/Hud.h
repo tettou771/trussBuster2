@@ -190,8 +190,8 @@ private:
                y + 70 * k, 2.2f * k, Color(0.95f, 0.95f, 1.0f));
         center("YOUR HI  " + pad(scene_->getHiScore()), y + 100 * k, 1.8f * k, Color(0.8f, 0.65f, 0.6f));
 
-        drawBoard(y + 132 * k, 5, 1.4f * k);
-        float fy = y + 300 * k;
+        drawBoard(y + 132 * k, 10, 1.4f * k);
+        float fy = y + 380 * k;
 
         if (scene_->isEnteringInitials()) {
             if (fmodf(t, 0.7f) < 0.45f) {
