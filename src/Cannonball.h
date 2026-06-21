@@ -5,6 +5,7 @@
 #include "Levels.h"
 #include "ChipTunes.h"
 #include "Dodeca.h"
+#include "TurntableRiderMod.h"
 
 using namespace std;
 using namespace tc;
@@ -60,6 +61,9 @@ public:
         rb->setFriction(0.9f).setRestitution(0.06f);
         rb->body().setLinearVelocity(velocity_);
         hitL_ = rb->onCollisionBegan.listen(this, &Cannonball::onHit);
+        // A settled bomb rides the deck like a block — cancel its turntable drift
+        // too. (Flying balls don't need it; their arc is over in a moment.)
+        if (mine_) addMod<TurntableRiderMod>();
     }
 
     void update() override {

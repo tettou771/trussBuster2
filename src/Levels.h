@@ -2,6 +2,7 @@
 
 #include <TrussC.h>
 #include <vector>
+#include <cstdlib>
 
 using namespace std;
 using namespace tc;
@@ -40,6 +41,27 @@ constexpr float PLATFORM_CX     = 0.0f;
 constexpr float PLATFORM_CZ     = -6.0f;
 constexpr float PLATFORM_RADIUS = 3.52f;   // 0.5 * 6.4 * 1.1
 constexpr float PLATFORM_ANG_VEL = 0.14f;  // rad/s — slow spin (shared)
+
+// Fixed physics step rate (Hz). The sim advances in exact 1/PHYS_HZ chunks so the
+// result is frame-rate independent.
+constexpr float PHYS_HZ = 60.0f;
+
+// Turntable anti-drift lives in TurntableRiderMod: riders on the rotating
+// kinematic platform creep outward because explicit position integration
+// overshoots the arc by ε = ½·r·(ω·dt)² each step. The mod subtracts exactly that
+// every fixed step (parameter-free), so no gain constant is needed here.
+
+// Debug time-scale (TB_TIMESCALE): fast-forward the sim for drift testing via
+// world.setTimeScale(). Per-step physics is identical to ship (same ω/hz), just S×
+// more steps per wall-second, so a soak that would take S minutes plays out in 1.
+// 1.0 in normal play.
+inline float timeScale() {
+    static float s = []() {
+        if (const char* e = std::getenv("TB_TIMESCALE")) return (float)atof(e);
+        return 1.0f;
+    }();
+    return s;
+}
 
 // horizontal distance from a world point to the platform's spin axis
 inline float platformDist(const Vec3& p) {

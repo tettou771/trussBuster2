@@ -56,19 +56,24 @@ public:
     void setup() override {
         setName("platform");
         setPos(PLATFORM_CX, 0.5f, PLATFORM_CZ);
+        // Advance the spin in lock-step with the sim: physicsUpdate fires once per
+        // step with that step's dt, so the node turns exactly ω·dt per step and the
+        // kinematic body (driven on the same event by its RigidBody mod) tracks it
+        // with no desync. Subscribe BEFORE the mod so the node is advanced before
+        // the mod reads it each step.
+        physL_ = defaultWorld().physicsUpdate.listen([this](float dt) {
+            if (stageEditMode()) return;
+            angle_ += PLATFORM_ANG_VEL * dt;
+            setEuler(Vec3(0, angle_, 0));   // kinematic body follows -> carries riders
+        });
         addMod<RigidBody>(ColliderShape::cylinder(PLATFORM_RADIUS, 1.0f),
                           BodyType::Kinematic)->setFriction(1.12f);
         addMod<ColliderRenderer>()->setColor(toLinearColor(wallColor()));
     }
 
-    void update() override {
-        if (stageEditMode()) return;
-        angle_ += PLATFORM_ANG_VEL * (float)getDeltaTime();
-        setEuler(Vec3(0, angle_, 0));   // kinematic body follows -> carries riders
-    }
-
 private:
     float angle_ = 0.0f;
+    EventListener physL_;
 };
 
 // The 3D world: camera scope, physics, cannon, blocks, endless game loop.
@@ -89,6 +94,7 @@ public:
     void setEditMode(bool on) {
         editMode_ = on;
         stageEditMode() = on;
+        defaultWorld().setTimeScale(on ? 0.0f : timeScale());   // pause/resume the sim
         if (!on) {
             for (auto& c : towerRoot_->getChildren()) {
                 if (c->isDead()) continue;
@@ -286,6 +292,12 @@ public:
         defaultWorld().setup();
         defaultWorld().setGravity(Vec3(0, -12.0f, 0));
         defaultWorld().addGroundPlane(0.0f);
+        // Fixed-step driving: the world hooks the frame loop itself and steps in
+        // exact 1/PHYS_HZ chunks, firing physicsUpdate per step (platform + riders
+        // move in lock-step). TB_TIMESCALE fast-forwards; maxSteps is generous so a
+        // big scale (or a low frame rate) isn't clamped.
+        defaultWorld().setTimeScale(timeScale());
+        defaultWorld().updateFixedStart(PHYS_HZ, 120);
 
         // fixed play camera; SHIFT+drag orbits (debug). Target sits between the
         // cannon (z=6.5) and the deck (z=-6) and the camera is pulled back so the
@@ -345,9 +357,10 @@ public:
 
         if (editMode_) return;   // stage editing: physics paused
 
-        // substep so fast balls don't tunnel thin blocks at low fps
-        int substeps = std::min(4, std::max(1, (int)ceilf(dt / (1.0f / 60.0f))));
-        defaultWorld().update(dt, substeps);
+        // Physics is driven by defaultWorld().updateFixedStart() (hooked in setup):
+        // it steps in fixed 1/PHYS_HZ chunks off the frame loop and fires
+        // physicsUpdate per step, so the platform + riders move in lock-step. No
+        // per-frame world.update() call here.
 
         // manual aiming with held arrow keys
         if (phase_ == Phase::Playing && !autopilot_) {

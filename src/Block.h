@@ -5,6 +5,7 @@
 #include "Levels.h"
 #include "ChipTunes.h"
 #include "GoldGlint.h"
+#include "TurntableRiderMod.h"
 
 using namespace std;
 using namespace tc;
@@ -73,6 +74,7 @@ public:
         rb->setFriction(def_.friction).setRestitution(0.05f);
         renderer_ = addMod<ColliderRenderer>();
         applyLook();
+        addMod<TurntableRiderMod>();   // cancels the turntable's outward drift
 
         // Whenever the NODE moves, push the transform into the BODY — but
         // only when the change came from OUTSIDE (gizmo/inspector/setPos).
