@@ -210,6 +210,12 @@ private:
             b.add(note(Wave::Noise, 0, 0.025f, vol, 0.001f, 0.01f, 0.3f, 0.01f), i * step);
         }
 
+        // Pad the buffer out to a full 8 bars (64 steps). build() sizes the buffer
+        // to the last note's tail (~63.7 steps here), so without this silent marker
+        // the sample-accurate loop restarts a fraction early — the missing trailing
+        // rest. This zero-volume note ends exactly on the downbeat (64 * step).
+        b.add(note(Wave::Square, 440.0f, step * 0.5f, 0.0f), 64.0f * step - step * 0.5f);
+
         bgm = b.build();
         bgm.setLoop(true);
         bgm.setVolume(0.5f);
