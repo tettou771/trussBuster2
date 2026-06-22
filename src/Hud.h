@@ -111,8 +111,6 @@ private:
             float y = getHeight() - 92;
             setColor(0.6f, 0.62f, 0.7f);
             drawBitmapString("ARROWS : AIM\nHOLD SPACE : CHARGE & FIRE\nGOLD RECHARGES - SURVIVE THE ENDLESS DECK!", 24, y, 1.5f);
-            setColor(0.45f, 0.47f, 0.55f);
-            drawBitmapString("F2 : DEBUG PANEL", getWidth() - 150, y, 1.5f);
         }
     }
 

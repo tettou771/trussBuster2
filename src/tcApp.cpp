@@ -75,7 +75,7 @@ void tcApp::draw() {
 
 void tcApp::keyPressed(int key) {
     // if (key == KEY_F1) { NodeInspector::instance().toggle(); return; }  // disabled
-    if (key == KEY_F2) { debugPanel_ = !debugPanel_; return; }
+    // if (key == KEY_F2) { debugPanel_ = !debugPanel_; return; }           // disabled
     scene_->handleKey(key, true);
 }
 

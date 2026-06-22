@@ -18,8 +18,6 @@ using namespace tcx;
 //   CLICK / TAP    start (and continue after game over / all clear)
 //   ARROWS         aim
 //   SPACE (hold)   charge & fire
-//   F1             node inspector
-//   F2             debug panel (aim sliders, autopilot, level jump)
 //
 // MCP: get_state / set_aim / fire / press_start / goto_level / set_autopilot
 class tcApp : public App {
